@@ -37,3 +37,8 @@ github.com/
 golang.org/
 .vscode/
 .idea/
+
+# ReminAIscence
+.fastembed_cache/
+.claude/memory.grafeo
+.claude/memory.grafeo.sock
