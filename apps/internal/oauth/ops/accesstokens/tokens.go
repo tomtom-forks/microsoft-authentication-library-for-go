@@ -40,7 +40,7 @@ type IDToken struct {
 	NotBefore         int64  `json:"nbf,omitempty"`
 	RawToken          string
 
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 var null = []byte("null")
@@ -114,7 +114,7 @@ type ClientInfo struct {
 	UID  string `json:"uid"`
 	UTID string `json:"utid"`
 
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 // UnmarshalJSON implements json.Unmarshaler.s
@@ -180,7 +180,7 @@ type TokenResponse struct {
 	GrantedScopes  Scopes                    `json:"scope"`
 	DeclinedScopes []string                  // This is derived
 
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 	scopesComputed   bool
 }
 
@@ -352,7 +352,7 @@ type RefreshToken struct {
 	Target            string `json:"target,omitempty"`
 	UserAssertionHash string `json:"user_assertion_hash,omitempty"`
 
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 // NewRefreshToken is the constructor for RefreshToken.

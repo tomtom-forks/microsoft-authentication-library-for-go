@@ -95,7 +95,7 @@ func TestKeyForAccessToken(t *testing.T) {
 }
 
 func TestAccessTokenUnmarshal(t *testing.T) {
-	jsonMap := map[string]interface{}{
+	jsonMap := map[string]any{
 		"home_account_id": "testHID",
 		"environment":     "env",
 		"extra":           "this_is_extra",
@@ -110,7 +110,7 @@ func TestAccessTokenUnmarshal(t *testing.T) {
 		HomeAccountID: testHID,
 		Environment:   env,
 		CachedAt:      internalTime.Unix{T: time.Unix(100, 0)},
-		AdditionalFields: map[string]interface{}{
+		AdditionalFields: map[string]any{
 			"extra": json.MarshalRaw("this_is_extra"),
 		},
 	}
@@ -130,7 +130,7 @@ func TestAccessTokenMarshal(t *testing.T) {
 		Environment:    "",
 		CachedAt:       internalTime.Unix{T: time.Unix(100, 0)},
 		CredentialType: credential,
-		AdditionalFields: map[string]interface{}{
+		AdditionalFields: map[string]any{
 			"extra": json.MarshalRaw("this_is_extra"),
 		},
 	}
@@ -167,7 +167,7 @@ func TestKeyForAppMetaData(t *testing.T) {
 }
 
 func TestAppMetaDataUnmarshal(t *testing.T) {
-	jsonMap := map[string]interface{}{
+	jsonMap := map[string]any{
 		"environment": "env",
 		"extra":       "this_is_extra",
 		"cached_at":   "100",
@@ -177,7 +177,7 @@ func TestAppMetaDataUnmarshal(t *testing.T) {
 	want := AppMetaData{
 		ClientID:    "cid",
 		Environment: "env",
-		AdditionalFields: map[string]interface{}{
+		AdditionalFields: map[string]any{
 			"extra":     json.MarshalRaw("this_is_extra"),
 			"cached_at": json.MarshalRaw("100"),
 		},
@@ -202,13 +202,13 @@ func TestAppMetaDataMarshal(t *testing.T) {
 		Environment: "",
 		ClientID:    appClient,
 		FamilyID:    "",
-		AdditionalFields: map[string]interface{}{
+		AdditionalFields: map[string]any{
 			"extra":     "this_is_extra",
 			"cached_at": "100",
 		},
 	}
 
-	want := map[string]interface{}{
+	want := map[string]any{
 		"client_id": "cid",
 		"extra":     "this_is_extra",
 		"cached_at": "100",
@@ -218,7 +218,7 @@ func TestAppMetaDataMarshal(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	got := map[string]interface{}{}
+	got := map[string]any{}
 	if err := stdJSON.Unmarshal(b, &got); err != nil {
 		t.Fatalf("TestAppMetaDataMarshal(unmarshal): err == %s, want err == nil", err)
 	}
@@ -243,7 +243,7 @@ func TestContractUnmarshalJSON(t *testing.T) {
 	want := Contract{
 		AccessTokens: map[string]AccessToken{
 			"an-entry": {
-				AdditionalFields: map[string]interface{}{
+				AdditionalFields: map[string]any{
 					"foo": json.MarshalRaw("bar"),
 				},
 			},
@@ -297,9 +297,9 @@ func TestContractUnmarshalJSON(t *testing.T) {
 				ClientID:    defaultClientID,
 			},
 		},
-		AdditionalFields: map[string]interface{}{
+		AdditionalFields: map[string]any{
 			"unknownEntity": json.MarshalRaw(
-				map[string]interface{}{
+				map[string]any{
 					"field1": "1",
 					"field2": "whats",
 				},
@@ -316,7 +316,7 @@ func TestContractMarshalJSON(t *testing.T) {
 	want := Contract{
 		AccessTokens: map[string]AccessToken{
 			"an-entry": {
-				AdditionalFields: map[string]interface{}{
+				AdditionalFields: map[string]any{
 					"foo": json.MarshalRaw("bar"),
 				},
 			},
@@ -370,9 +370,9 @@ func TestContractMarshalJSON(t *testing.T) {
 				ClientID:    defaultClientID,
 			},
 		},
-		AdditionalFields: map[string]interface{}{
+		AdditionalFields: map[string]any{
 			"unknownEntity": json.MarshalRaw(
-				map[string]interface{}{
+				map[string]any{
 					"field1": "1",
 					"field2": "whats",
 				},
@@ -420,7 +420,7 @@ func TestKeyForIDToken(t *testing.T) {
 }
 
 func TestIDTokenUnmarshal(t *testing.T) {
-	jsonMap := map[string]interface{}{
+	jsonMap := map[string]any{
 		"home_account_id": "HID",
 		"environment":     "env",
 		"extra":           "this_is_extra",
@@ -433,7 +433,7 @@ func TestIDTokenUnmarshal(t *testing.T) {
 	want := IDToken{
 		HomeAccountID: "HID",
 		Environment:   "env",
-		AdditionalFields: map[string]interface{}{
+		AdditionalFields: map[string]any{
 			"extra": json.MarshalRaw("this_is_extra"),
 		},
 	}
@@ -453,10 +453,10 @@ func TestIDTokenMarshal(t *testing.T) {
 		HomeAccountID:    idHid,
 		Environment:      idEnv,
 		Realm:            "",
-		AdditionalFields: map[string]interface{}{"extra": "this_is_extra"},
+		AdditionalFields: map[string]any{"extra": "this_is_extra"},
 	}
 
-	want := map[string]interface{}{
+	want := map[string]any{
 		"home_account_id": "HID",
 		"environment":     "env",
 		"extra":           "this_is_extra",
@@ -466,7 +466,7 @@ func TestIDTokenMarshal(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	got := map[string]interface{}{}
+	got := map[string]any{}
 
 	if err := stdJSON.Unmarshal(b, &got); err != nil {
 		panic(err)
@@ -509,7 +509,7 @@ func TestKeyForRefreshToken(t *testing.T) {
 }
 
 func TestRefreshTokenUnmarshal(t *testing.T) {
-	jsonMap := map[string]interface{}{
+	jsonMap := map[string]any{
 		"home_account_id": "hid",
 		"environment":     "env",
 		"extra":           "this_is_extra",
@@ -523,7 +523,7 @@ func TestRefreshTokenUnmarshal(t *testing.T) {
 		HomeAccountID: "hid",
 		Environment:   "env",
 		Secret:        "secret",
-		AdditionalFields: map[string]interface{}{
+		AdditionalFields: map[string]any{
 			"extra": json.MarshalRaw("this_is_extra"),
 		},
 	}
@@ -545,11 +545,11 @@ func TestRefreshTokenMarshal(t *testing.T) {
 		Environment:    rtEnv,
 		CredentialType: rtCredential,
 		Secret:         refSecret,
-		AdditionalFields: map[string]interface{}{
+		AdditionalFields: map[string]any{
 			"extra": "this_is_extra",
 		},
 	}
-	want := map[string]interface{}{
+	want := map[string]any{
 		"environment":     "env",
 		"credential_type": "accesstokens.RefreshToken",
 		"secret":          "secret",
@@ -559,7 +559,7 @@ func TestRefreshTokenMarshal(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	got := map[string]interface{}{}
+	got := map[string]any{}
 
 	if err := stdJSON.Unmarshal(b, &got); err != nil {
 		panic(err)

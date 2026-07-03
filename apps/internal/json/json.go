@@ -27,7 +27,7 @@ var (
 	rightParen = []byte("]")[0]
 )
 
-var mapStrInterType = reflect.TypeOf(map[string]interface{}{})
+var mapStrInterType = reflect.TypeOf(map[string]any{})
 
 // stateFn defines a state machine function. This will be used in all state
 // machines in this package.
@@ -38,14 +38,14 @@ type stateFn func() (stateFn, error)
 // that a field called "AdditionalFields" of type map[string]interface{}
 // with "-" used inside struct tag `json:"-"` can be marshalled as if
 // they were fields within the struct.
-func Marshal(i interface{}) ([]byte, error) {
+func Marshal(i any) ([]byte, error) {
 	buff := bytes.Buffer{}
 	enc := json.NewEncoder(&buff)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "")
 
 	v := reflect.ValueOf(i)
-	if v.Kind() != reflect.Ptr && v.CanAddr() {
+	if v.Kind() != reflect.Pointer && v.CanAddr() {
 		v = v.Addr()
 	}
 	err := marshalStruct(v, &buff, enc)
@@ -71,7 +71,7 @@ func Marshal(i interface{}) ([]byte, error) {
 // must decode into a temporary value and only copy/assign it on success.
 // MSAL's own token-cache callers already follow this pattern (see
 // apps/internal/base/storage.Manager.Unmarshal).
-func Unmarshal(b []byte, i interface{}) (err error) {
+func Unmarshal(b []byte, i any) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("json: panic during Unmarshal: %v", r)
@@ -90,7 +90,7 @@ func Unmarshal(b []byte, i interface{}) (err error) {
 // MarshalRaw marshals i into a json.RawMessage. If I cannot be marshalled,
 // this will panic. This is exposed to help test AdditionalField values
 // which are stored as json.RawMessage.
-func MarshalRaw(i interface{}) json.RawMessage {
+func MarshalRaw(i any) json.RawMessage {
 	b, err := json.Marshal(i)
 	if err != nil {
 		panic(err)
@@ -124,7 +124,7 @@ func hasMarshalJSON(v reflect.Value) bool {
 	ok := false
 	if _, ok = v.Interface().(json.Marshaler); !ok {
 		var i any
-		if v.Kind() == reflect.Ptr {
+		if v.Kind() == reflect.Pointer {
 			i = v.Elem().Interface()
 		} else if v.CanAddr() {
 			i = v.Addr().Interface()
@@ -141,7 +141,7 @@ func callMarshalJSON(v reflect.Value) ([]byte, error) {
 		return marsh.MarshalJSON()
 	}
 
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		if marsh, ok := v.Elem().Interface().(json.Marshaler); ok {
 			return marsh.MarshalJSON()
 		}
@@ -160,7 +160,7 @@ func callMarshalJSON(v reflect.Value) ([]byte, error) {
 // the UnmarshalJSON method.
 func hasUnmarshalJSON(v reflect.Value) bool {
 	// You can't unmarshal on a non-pointer type.
-	if v.Kind() != reflect.Ptr {
+	if v.Kind() != reflect.Pointer {
 		if !v.CanAddr() {
 			return false
 		}

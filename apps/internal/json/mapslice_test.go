@@ -15,7 +15,7 @@ type StructWithUnmarshal struct {
 
 type StructName struct {
 	Name             string
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 func (s *StructWithUnmarshal) UnmarshalJSON(b []byte) error {
@@ -39,8 +39,8 @@ func TestUnmarshalMap(t *testing.T) {
 	tests := []struct {
 		desc  string
 		input string
-		got   interface{}
-		want  interface{}
+		got   any
+		want  any
 		err   bool
 	}{
 		{
@@ -64,9 +64,9 @@ func TestUnmarshalMap(t *testing.T) {
 				}
 			}
 			`,
-			got: &map[string]interface{}{},
-			want: map[string]interface{}{
-				"key": map[string]interface{}{
+			got: &map[string]any{},
+			want: map[string]any{
+				"key": map[string]any{
 					"Name": "John",
 				},
 			},
@@ -101,7 +101,7 @@ func TestUnmarshalMap(t *testing.T) {
 			want: map[string]StructName{
 				"key": {
 					Name: "John",
-					AdditionalFields: map[string]interface{}{
+					AdditionalFields: map[string]any{
 						"extra": MarshalRaw("extra"),
 					},
 				},
@@ -121,7 +121,7 @@ func TestUnmarshalMap(t *testing.T) {
 			want: map[string]*StructName{
 				"key": {
 					Name: "John",
-					AdditionalFields: map[string]interface{}{
+					AdditionalFields: map[string]any{
 						"extra": MarshalRaw("extra"),
 					},
 				},
@@ -144,7 +144,7 @@ func TestUnmarshalMap(t *testing.T) {
 				"key": {
 					{
 						Name: "John",
-						AdditionalFields: map[string]interface{}{
+						AdditionalFields: map[string]any{
 							"extra": MarshalRaw("extra"),
 						},
 					},
@@ -168,7 +168,7 @@ func TestUnmarshalMap(t *testing.T) {
 				"key": {
 					{
 						Name: "John",
-						AdditionalFields: map[string]interface{}{
+						AdditionalFields: map[string]any{
 							"extra": MarshalRaw("extra"),
 						},
 					},
@@ -201,8 +201,8 @@ func TestUnmarshalSlice(t *testing.T) {
 	tests := []struct {
 		desc  string
 		input string
-		got   interface{}
-		want  interface{}
+		got   any
+		want  any
 		err   bool
 	}{
 		{
@@ -258,7 +258,7 @@ func TestUnmarshalSlice(t *testing.T) {
 			want: []StructName{
 				{
 					Name: "John",
-					AdditionalFields: map[string]interface{}{
+					AdditionalFields: map[string]any{
 						"extra": MarshalRaw("extra"),
 					},
 				},
@@ -278,7 +278,7 @@ func TestUnmarshalSlice(t *testing.T) {
 			want: []*StructName{
 				{
 					Name: "John",
-					AdditionalFields: map[string]interface{}{
+					AdditionalFields: map[string]any{
 						"extra": MarshalRaw("extra"),
 					},
 				},
@@ -301,7 +301,7 @@ func TestUnmarshalSlice(t *testing.T) {
 				{
 					{
 						Name: "John",
-						AdditionalFields: map[string]interface{}{
+						AdditionalFields: map[string]any{
 							"extra": MarshalRaw("extra"),
 						},
 					},
@@ -325,7 +325,7 @@ func TestUnmarshalSlice(t *testing.T) {
 				{
 					{
 						Name: "John",
-						AdditionalFields: map[string]interface{}{
+						AdditionalFields: map[string]any{
 							"extra": MarshalRaw("extra"),
 						},
 					},
@@ -349,7 +349,7 @@ func TestUnmarshalSlice(t *testing.T) {
 				{
 					"key": {
 						Name: "John",
-						AdditionalFields: map[string]interface{}{
+						AdditionalFields: map[string]any{
 							"extra": MarshalRaw("extra"),
 						},
 					},

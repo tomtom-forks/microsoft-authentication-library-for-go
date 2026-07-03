@@ -30,17 +30,17 @@ var testAuthorityEndpoints = authority.NewEndpoints(
 
 type fakeXMLCaller struct {
 	err      bool
-	giveResp interface{}
+	giveResp any
 
 	gotAction   string
 	gotEndpoint string
 	gotQV       url.Values
 	gotHeaders  http.Header
-	gotBody     interface{}
-	gotResp     interface{}
+	gotBody     any
+	gotResp     any
 }
 
-func (f *fakeXMLCaller) XMLCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, resp interface{}) error {
+func (f *fakeXMLCaller) XMLCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, resp any) error {
 	if f.err {
 		return errors.New("error")
 	}
@@ -51,7 +51,7 @@ func (f *fakeXMLCaller) XMLCall(ctx context.Context, endpoint string, headers ht
 	return nil
 }
 
-func (f *fakeXMLCaller) SOAPCall(ctx context.Context, endpoint, action string, headers http.Header, qv url.Values, body string, resp interface{}) error {
+func (f *fakeXMLCaller) SOAPCall(ctx context.Context, endpoint, action string, headers http.Header, qv url.Values, body string, resp any) error {
 	if f.err {
 		return errors.New("error")
 	}
@@ -76,7 +76,7 @@ func (f *fakeXMLCaller) SOAPCall(ctx context.Context, endpoint, action string, h
 	return nil
 }
 
-func (f *fakeXMLCaller) compareBase(endpoint string, headers http.Header, qv url.Values, resp interface{}) error {
+func (f *fakeXMLCaller) compareBase(endpoint string, headers http.Header, qv url.Values, resp any) error {
 	if f.gotEndpoint != endpoint {
 		return fmt.Errorf("got endpoint == %s, want endpoint == %s", f.gotEndpoint, endpoint)
 	}
@@ -88,7 +88,7 @@ func (f *fakeXMLCaller) compareBase(endpoint string, headers http.Header, qv url
 	}
 
 	gotValue := reflect.ValueOf(f.gotResp)
-	if gotValue.Kind() != reflect.Ptr {
+	if gotValue.Kind() != reflect.Pointer {
 		return fmt.Errorf("resp cannot be a non-pointer type")
 	}
 	gotValue = gotValue.Elem()
@@ -102,7 +102,7 @@ func (f *fakeXMLCaller) compareBase(endpoint string, headers http.Header, qv url
 	return nil
 }
 
-func (f *fakeXMLCaller) compareXML(endpoint string, resp interface{}) error {
+func (f *fakeXMLCaller) compareXML(endpoint string, resp any) error {
 	if err := f.compareBase(endpoint, http.Header{}, url.Values{}, resp); err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func (f *fakeXMLCaller) compareXML(endpoint string, resp interface{}) error {
 
 var replaceURNRE = regexp.MustCompile(`urn:uuid:.*</was:messageID>`)
 
-func (f *fakeXMLCaller) compareSOAP(action, endpoint string, body, resp interface{}) error {
+func (f *fakeXMLCaller) compareSOAP(action, endpoint string, body, resp any) error {
 	if err := f.compareBase(endpoint, http.Header{}, nil, resp); err != nil {
 		return err
 	}

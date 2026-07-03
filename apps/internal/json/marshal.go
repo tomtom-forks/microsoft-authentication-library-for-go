@@ -15,7 +15,7 @@ import (
 // as JSON into buff (sometimes with writes to buff directly, sometimes via enc).
 // This call is recursive for all fields of *struct or struct type.
 func marshalStruct(v reflect.Value, buff *bytes.Buffer, enc *json.Encoder) error {
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 	// We only care about custom Marshalling a struct.
@@ -81,7 +81,7 @@ func marshalStruct(v reflect.Value, buff *bytes.Buffer, enc *json.Encoder) error
 		jsonName := translator.jsonName(t.Field(x).Name)
 		buff.WriteString(fmt.Sprintf("%q:", jsonName))
 
-		if field.Kind() == reflect.Ptr {
+		if field.Kind() == reflect.Pointer {
 			field = field.Elem()
 		}
 
@@ -169,13 +169,13 @@ func (m *mapEncode) start() (stateFn, error) {
 	}
 
 	valueBaseType := m.m.Type().Elem()
-	if valueBaseType.Kind() == reflect.Ptr {
+	if valueBaseType.Kind() == reflect.Pointer {
 		valueBaseType = valueBaseType.Elem()
 	}
 	m.valueBaseType = valueBaseType
 
 	switch valueBaseType.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		return nil, fmt.Errorf("Marshal does not support **<type> or *<reference>")
 	case reflect.Struct, reflect.Map, reflect.Slice:
 		return m.encode, nil
@@ -273,13 +273,13 @@ func (s *sliceEncode) start() (stateFn, error) {
 	}
 
 	valueBaseType := s.s.Type().Elem()
-	if valueBaseType.Kind() == reflect.Ptr {
+	if valueBaseType.Kind() == reflect.Pointer {
 		valueBaseType = valueBaseType.Elem()
 	}
 	s.valueBaseType = valueBaseType
 
 	switch valueBaseType.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		return nil, fmt.Errorf("Marshal does not support **<type> or *<reference>")
 	case reflect.Struct, reflect.Map, reflect.Slice:
 		return s.encode, nil
@@ -326,8 +326,8 @@ func (s *sliceEncode) encode() (stateFn, error) {
 
 // writeAddFields writes the AdditionalFields struct field out to JSON as field
 // values. i must be a map[string]interface{} or this will panic.
-func writeAddFields(i interface{}, buff *bytes.Buffer, enc *json.Encoder) error {
-	m := i.(map[string]interface{})
+func writeAddFields(i any, buff *bytes.Buffer, enc *json.Encoder) error {
+	m := i.(map[string]any)
 
 	x := 0
 	for k, v := range m {

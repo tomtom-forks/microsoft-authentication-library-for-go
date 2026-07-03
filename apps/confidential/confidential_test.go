@@ -103,7 +103,7 @@ func fakeClient(tk accesstokens.TokenResponse, credential Credential, fakeAuthor
 					},
 				},
 			},
-			AdditionalFields: map[string]interface{}{
+			AdditionalFields: map[string]any{
 				"api-version": "2020-02-02",
 			},
 		},
@@ -782,7 +782,7 @@ func TestNewCredFromCert(t *testing.T) {
 				validated := false
 				client.base.Token.AccessTokens.(*fake.AccessTokens).ValidateAssertion = func(s string) {
 					validated = true
-					tk, err := jwt.Parse(s, func(tk *jwt.Token) (interface{}, error) {
+					tk, err := jwt.Parse(s, func(tk *jwt.Token) (any, error) {
 						algo := jwt.SigningMethodPS256.Alg()
 						if file.testAuthority != fakeAuthority {
 							algo = jwt.SigningMethodRS256.Alg()
@@ -802,11 +802,11 @@ func TestNewCredFromCert(t *testing.T) {
 					if x5c, ok := tk.Header["x5c"]; ok != sendX5c {
 						t.Fatal("x5c should be set only when application passed WithX5C option")
 					} else if ok {
-						if x := len(x5c.([]interface{})); x > file.numCerts {
+						if x := len(x5c.([]any)); x > file.numCerts {
 							t.Fatalf("x5c contains %d certs; expected %d", x, file.numCerts)
 						}
 						// x5c must contain all the file's certs, signing cert first
-						for i, cert := range x5c.([]interface{}) {
+						for i, cert := range x5c.([]any) {
 							s := cert.(string)
 							if _, ok := expectedCerts[s]; ok {
 								delete(expectedCerts, s)

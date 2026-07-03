@@ -53,7 +53,7 @@ func New(httpClient HTTPClient) *Client {
 // of body in the HTTP body. The response is JSON unmarshalled into resp. resp must be a pointer to
 // a struct. If the body struct contains a field called "AdditionalFields" we use a custom
 // marshal/unmarshal engine.
-func (c *Client) JSONCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, body, resp interface{}) error {
+func (c *Client) JSONCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, body, resp any) error {
 	if qv == nil {
 		qv = url.Values{}
 	}
@@ -106,7 +106,7 @@ func (c *Client) JSONCall(ctx context.Context, endpoint string, headers http.Hea
 
 // XMLCall connects to an endpoint and decodes the XML response into resp. This is used when
 // sending application/xml . If sending XML via SOAP, use SOAPCall().
-func (c *Client) XMLCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, resp interface{}) error {
+func (c *Client) XMLCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, resp any) error {
 	if err := c.checkResp(reflect.ValueOf(resp)); err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func (c *Client) XMLCall(ctx context.Context, endpoint string, headers http.Head
 }
 
 // SOAPCall returns the SOAP message given an endpoint, action, body of the request and the response object to marshal into.
-func (c *Client) SOAPCall(ctx context.Context, endpoint, action string, headers http.Header, qv url.Values, body string, resp interface{}) error {
+func (c *Client) SOAPCall(ctx context.Context, endpoint, action string, headers http.Header, qv url.Values, body string, resp any) error {
 	if body == "" {
 		return fmt.Errorf("cannot make a SOAP call with body set to empty string")
 	}
@@ -156,7 +156,7 @@ func (c *Client) SOAPCall(ctx context.Context, endpoint, action string, headers 
 
 // xmlCall sends an XML in body and decodes into resp. This simply does the transport and relies on
 // an upper level call to set things such as SOAP parameters and Content-Type, if required.
-func (c *Client) xmlCall(ctx context.Context, u *url.URL, headers http.Header, body string, resp interface{}) error {
+func (c *Client) xmlCall(ctx context.Context, u *url.URL, headers http.Header, body string, resp any) error {
 	req := &http.Request{Method: http.MethodGet, URL: u, Header: headers}
 
 	if len(body) > 0 {
@@ -174,7 +174,7 @@ func (c *Client) xmlCall(ctx context.Context, u *url.URL, headers http.Header, b
 
 // URLFormCall is used to make a call where we need to send application/x-www-form-urlencoded data
 // to the backend and receive JSON back. qv will be encoded into the request body.
-func (c *Client) URLFormCall(ctx context.Context, endpoint string, qv url.Values, resp interface{}) error {
+func (c *Client) URLFormCall(ctx context.Context, endpoint string, qv url.Values, resp any) error {
 	if len(qv) == 0 {
 		return fmt.Errorf("URLFormCall() requires qv to have non-zero length")
 	}
@@ -274,7 +274,7 @@ func (c *Client) do(ctx context.Context, req *http.Request) ([]byte, error) {
 
 // checkResp checks a response object o make sure it is a pointer to a struct.
 func (c *Client) checkResp(v reflect.Value) error {
-	if v.Kind() != reflect.Ptr {
+	if v.Kind() != reflect.Pointer {
 		return fmt.Errorf("bug: resp argument must a *struct, was %T", v.Interface())
 	}
 	v = v.Elem()

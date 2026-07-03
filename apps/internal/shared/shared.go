@@ -29,7 +29,7 @@ type Account struct {
 	RawClientInfo     string `json:"client_info,omitempty"`
 	UserAssertionHash string `json:"user_assertion_hash,omitempty"`
 
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 // NewAccount creates an account.

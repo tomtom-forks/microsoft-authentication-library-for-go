@@ -18,7 +18,7 @@ var prettyConf = &pretty.Config{
 	IncludeUnexported: false,
 	SkipZeroFields:    true,
 	TrackCycles:       true,
-	Formatter: map[reflect.Type]interface{}{
+	Formatter: map[reflect.Type]any{
 		reflect.TypeOf((*io.Reader)(nil)).Elem(): func(r io.Reader) string {
 			b, err := io.ReadAll(r)
 			if err != nil {
@@ -93,6 +93,6 @@ func Is(err, target error) bool {
 // As finds the first error in errors chain that matches target,
 // and if so, sets target to that error value and returns true.
 // Otherwise, it returns false.
-func As(err error, target interface{}) bool {
+func As(err error, target any) bool {
 	return errors.As(err, target)
 }

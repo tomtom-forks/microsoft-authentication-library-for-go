@@ -49,7 +49,7 @@ var validRegion = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 
 // jsonCaller is an interface that allows us to mock the JSONCall method.
 type jsonCaller interface {
-	JSONCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, body, resp interface{}) error
+	JSONCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, body, resp any) error
 }
 
 // For backward compatibility, accept both old and new China endpoints for a transition period.
@@ -98,7 +98,7 @@ type TenantDiscoveryResponse struct {
 	TokenEndpoint         string `json:"token_endpoint"`
 	Issuer                string `json:"issuer"`
 
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 // Validate validates that the response had the correct values required.
@@ -164,14 +164,14 @@ type InstanceDiscoveryMetadata struct {
 	PreferredCache   string   `json:"preferred_cache"`
 	Aliases          []string `json:"aliases"`
 
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 type InstanceDiscoveryResponse struct {
 	TenantDiscoveryEndpoint string                      `json:"tenant_discovery_endpoint"`
 	Metadata                []InstanceDiscoveryMetadata `json:"metadata"`
 
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 //go:generate stringer -type=AuthorizeType
@@ -594,7 +594,7 @@ type UserRealm struct {
 	FederationProtocol    string `json:"federation_protocol"`
 	FederationMetadataURL string `json:"federation_metadata_url"`
 
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 func (u UserRealm) validate() error {
@@ -819,12 +819,12 @@ func (a *AuthParams) CacheExtKeyGenerator() string {
 	// key or value (client_claims, for example, is arbitrary caller-supplied
 	// JSON), which would map two distinct component sets to the same hash and
 	// return the wrong cached token. Length prefixes make the encoding injective.
-	var sb strings.Builder
+	var keyStr strings.Builder
 	for _, key := range keys {
 		val := a.CacheKeyComponents[key]
-		fmt.Fprintf(&sb, "%d:%s%d:%s", len(key), key, len(val), val)
+		keyStr.WriteString(fmt.Sprintf("%d:%s%d:%s", len(key), key, len(val), val))
 	}
 
-	hash := sha256.Sum256([]byte(sb.String()))
+	hash := sha256.Sum256([]byte(keyStr.String()))
 	return strings.ToLower(base64.RawURLEncoding.EncodeToString(hash[:]))
 }

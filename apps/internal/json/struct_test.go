@@ -17,7 +17,7 @@ func TestDecoderStart(t *testing.T) {
 	tests := []struct {
 		desc    string
 		b       []byte
-		i       interface{}
+		i       any
 		stateFn stateFn
 		err     bool
 	}{
@@ -71,7 +71,7 @@ func TestDecoderNext(t *testing.T) {
 		// advToken advanced the decoder this may Token() calls, as the decoder only works
 		// on well formed JSON.
 		advToken int
-		i        interface{}
+		i        any
 		key      string
 		stateFn  stateFn
 		err      bool
@@ -211,7 +211,7 @@ func TestDecoderStoreAdditional(t *testing.T) {
 			b:    []byte(`{"blah": "whatever"}`),
 			got:  StructA{},
 			want: StructA{
-				AdditionalFields: map[string]interface{}{
+				AdditionalFields: map[string]any{
 					"blah": json.RawMessage(`"whatever"`),
 				},
 			},
@@ -221,12 +221,12 @@ func TestDecoderStoreAdditional(t *testing.T) {
 			desc: "Map exists",
 			b:    []byte(`{"blah": "whatever"}`),
 			got: StructA{
-				AdditionalFields: map[string]interface{}{
+				AdditionalFields: map[string]any{
 					"else": json.RawMessage(`"if"`),
 				},
 			},
 			want: StructA{
-				AdditionalFields: map[string]interface{}{
+				AdditionalFields: map[string]any{
 					"else": json.RawMessage(`"if"`),
 					"blah": json.RawMessage(`"whatever"`),
 				},
