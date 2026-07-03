@@ -347,39 +347,39 @@ func TestAccountCachePartitionKey(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		desc             string
-		homeAccountID    string
+		desc              string
+		homeAccountID     string
 		withCacheAccessor bool
-		wantReplaceCount int
-		wantPartitionKey string
+		wantReplaceCount  int
+		wantPartitionKey  string
 	}{
 		{
-			desc:             "typical homeAccountID produces correct partition key",
-			homeAccountID:    "uid.utid",
+			desc:              "typical homeAccountID produces correct partition key",
+			homeAccountID:     "uid.utid",
 			withCacheAccessor: true,
-			wantReplaceCount: 1,
-			wantPartitionKey: "uid.utid",
+			wantReplaceCount:  1,
+			wantPartitionKey:  "uid.utid",
 		},
 		{
-			desc:             "different homeAccountID produces its own partition key",
-			homeAccountID:    "other-uid.other-utid",
+			desc:              "different homeAccountID produces its own partition key",
+			homeAccountID:     "other-uid.other-utid",
 			withCacheAccessor: true,
-			wantReplaceCount: 1,
-			wantPartitionKey: "other-uid.other-utid",
+			wantReplaceCount:  1,
+			wantPartitionKey:  "other-uid.other-utid",
 		},
 		{
-			desc:             "empty homeAccountID produces empty partition key",
-			homeAccountID:    "",
+			desc:              "empty homeAccountID produces empty partition key",
+			homeAccountID:     "",
 			withCacheAccessor: true,
-			wantReplaceCount: 1,
-			wantPartitionKey: "",
+			wantReplaceCount:  1,
+			wantPartitionKey:  "",
 		},
 		{
-			desc:             "no cache accessor means Replace is never called",
-			homeAccountID:    "uid.utid",
+			desc:              "no cache accessor means Replace is never called",
+			homeAccountID:     "uid.utid",
 			withCacheAccessor: false,
-			wantReplaceCount: 0,
-			wantPartitionKey: "",
+			wantReplaceCount:  0,
+			wantPartitionKey:  "",
 		},
 	}
 
@@ -393,7 +393,6 @@ func TestAccountCachePartitionKey(t *testing.T) {
 		}
 
 		client := fakeClient(t, opts...)
-
 
 		if _, err := client.Account(ctx, test.homeAccountID); err != nil {
 			t.Errorf("TestAccountCachePartitionKey(%s): unexpected error: %s", test.desc, err.Error())
@@ -489,6 +488,86 @@ func TestAppTokenProactiveRefreshCachePartitionKey(t *testing.T) {
 	for i, got := range pkCache.replaceKeys {
 		if got != wantKey {
 			t.Errorf("replace partition key[%d] = %q, want %q", i, got, wantKey)
+		}
+	}
+}
+
+func TestRemoveAccountCachePartitionKey(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		desc              string
+		homeAccountID     string
+		withCacheAccessor bool
+		wantReplaceCount  int
+		wantExportCount   int
+		wantPartitionKey  string
+	}{
+		{
+			desc:              "typical homeAccountID produces correct partition key",
+			homeAccountID:     "uid.utid",
+			withCacheAccessor: true,
+			wantReplaceCount:  1,
+			wantExportCount:   1,
+			wantPartitionKey:  "uid.utid",
+		},
+		{
+			desc:              "different homeAccountID produces its own partition key",
+			homeAccountID:     "other-uid.other-utid",
+			withCacheAccessor: true,
+			wantReplaceCount:  1,
+			wantExportCount:   1,
+			wantPartitionKey:  "other-uid.other-utid",
+		},
+		{
+			desc:              "empty homeAccountID produces empty partition key",
+			homeAccountID:     "",
+			withCacheAccessor: true,
+			wantReplaceCount:  1,
+			wantExportCount:   1,
+			wantPartitionKey:  "",
+		},
+		{
+			desc:              "no cache accessor means Replace and Export are never called",
+			homeAccountID:     "uid.utid",
+			withCacheAccessor: false,
+			wantReplaceCount:  0,
+			wantExportCount:   0,
+		},
+	}
+
+	for _, test := range tests {
+		pkCache := &partitionKeyCache{}
+
+		var opts []Option
+		if test.withCacheAccessor {
+			opts = append(opts, WithCacheAccessor(pkCache))
+		}
+		client := fakeClient(t, opts...)
+
+		account := shared.NewAccount(test.homeAccountID, fakeAuthority, "realm", "id", authority.AAD, "upn")
+		if err := client.RemoveAccount(ctx, account); err != nil {
+			t.Errorf("TestRemoveAccountCachePartitionKey(%s): unexpected error: %s", test.desc, err.Error())
+			continue
+		}
+
+		if got := len(pkCache.replaceKeys); got != test.wantReplaceCount {
+			t.Errorf("TestRemoveAccountCachePartitionKey(%s): expected cache.Replace to be called %d time(s), got %d", test.desc, test.wantReplaceCount, got)
+			continue
+		}
+		if got := len(pkCache.exportKeys); got != test.wantExportCount {
+			t.Errorf("TestRemoveAccountCachePartitionKey(%s): expected cache.Export to be called %d time(s), got %d", test.desc, test.wantExportCount, got)
+			continue
+		}
+		if test.wantReplaceCount > 0 {
+			if got := pkCache.replaceKeys[0]; got != test.wantPartitionKey {
+				t.Errorf("TestRemoveAccountCachePartitionKey(%s): expected Replace partition key %q, got %q (empty string may indicate the same regression as PR#615)", test.desc, test.wantPartitionKey, got)
+			}
+		}
+		if test.wantExportCount > 0 {
+			if got := pkCache.exportKeys[0]; got != test.wantPartitionKey {
+				t.Errorf("TestRemoveAccountCachePartitionKey(%s): expected Export partition key %q, got %q", test.desc, test.wantPartitionKey, got)
+			}
 		}
 	}
 }
