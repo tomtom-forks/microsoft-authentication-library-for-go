@@ -269,7 +269,7 @@ func TestCacheIOErrors(t *testing.T) {
 		hid := "uid.utid"
 		client := fakeClient(t, WithCacheAccessor(&cache))
 		// cache fake tokens and app metadata
-		_, err := client.AuthResultFromToken(ctx,
+		ar, err := client.AuthResultFromToken(ctx,
 			authority.AuthParams{
 				AuthorityInfo: authority.Info{Host: fakeAuthority},
 				ClientID:      fakeClientID,
@@ -292,7 +292,7 @@ func TestCacheIOErrors(t *testing.T) {
 		cache.exportErr = expected
 		_, actual := client.AcquireTokenSilent(ctx,
 			AcquireTokenSilentParameters{
-				Account: shared.NewAccount(hid, fakeAuthority, "realm", "id", authority.AAD, "upn"),
+				Account: ar.Account,
 				Scopes:  []string{"not-" + testScopes[0]},
 			},
 		)
