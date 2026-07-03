@@ -413,6 +413,86 @@ func TestAccountCachePartitionKey(t *testing.T) {
 	}
 }
 
+func TestRemoveAccountCachePartitionKey(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		desc              string
+		homeAccountID     string
+		withCacheAccessor bool
+		wantReplaceCount  int
+		wantExportCount   int
+		wantPartitionKey  string
+	}{
+		{
+			desc:              "typical homeAccountID produces correct partition key",
+			homeAccountID:     "uid.utid",
+			withCacheAccessor: true,
+			wantReplaceCount:  1,
+			wantExportCount:   1,
+			wantPartitionKey:  "uid.utid",
+		},
+		{
+			desc:              "different homeAccountID produces its own partition key",
+			homeAccountID:     "other-uid.other-utid",
+			withCacheAccessor: true,
+			wantReplaceCount:  1,
+			wantExportCount:   1,
+			wantPartitionKey:  "other-uid.other-utid",
+		},
+		{
+			desc:              "empty homeAccountID produces empty partition key",
+			homeAccountID:     "",
+			withCacheAccessor: true,
+			wantReplaceCount:  1,
+			wantExportCount:   1,
+			wantPartitionKey:  "",
+		},
+		{
+			desc:              "no cache accessor means Replace and Export are never called",
+			homeAccountID:     "uid.utid",
+			withCacheAccessor: false,
+			wantReplaceCount:  0,
+			wantExportCount:   0,
+		},
+	}
+
+	for _, test := range tests {
+		pkCache := &partitionKeyCache{}
+
+		var opts []Option
+		if test.withCacheAccessor {
+			opts = append(opts, WithCacheAccessor(pkCache))
+		}
+		client := fakeClient(t, opts...)
+
+		account := shared.NewAccount(test.homeAccountID, fakeAuthority, "realm", "id", authority.AAD, "upn")
+		if err := client.RemoveAccount(ctx, account); err != nil {
+			t.Errorf("TestRemoveAccountCachePartitionKey(%s): unexpected error: %s", test.desc, err.Error())
+			continue
+		}
+
+		if got := len(pkCache.replaceKeys); got != test.wantReplaceCount {
+			t.Errorf("TestRemoveAccountCachePartitionKey(%s): expected cache.Replace to be called %d time(s), got %d", test.desc, test.wantReplaceCount, got)
+			continue
+		}
+		if got := len(pkCache.exportKeys); got != test.wantExportCount {
+			t.Errorf("TestRemoveAccountCachePartitionKey(%s): expected cache.Export to be called %d time(s), got %d", test.desc, test.wantExportCount, got)
+			continue
+		}
+		if test.wantReplaceCount > 0 {
+			if got := pkCache.replaceKeys[0]; got != test.wantPartitionKey {
+				t.Errorf("TestRemoveAccountCachePartitionKey(%s): expected Replace partition key %q, got %q (empty string may indicate the same regression as PR#615)", test.desc, test.wantPartitionKey, got)
+			}
+		}
+		if test.wantExportCount > 0 {
+			if got := pkCache.exportKeys[0]; got != test.wantPartitionKey {
+				t.Errorf("TestRemoveAccountCachePartitionKey(%s): expected Export partition key %q, got %q", test.desc, test.wantPartitionKey, got)
+			}
+		}
+	}
+}
+
 func TestCreateAuthenticationResult(t *testing.T) {
 	future := time.Now().Add(400 * time.Second)
 

@@ -573,11 +573,14 @@ func (b Client) RemoveAccount(ctx context.Context, account shared.Account) error
 	}
 	b.cacheAccessorMu.Lock()
 	defer b.cacheAccessorMu.Unlock()
-	key := b.AuthParams.CacheKey(false)
+	authParams := b.AuthParams
+	authParams.AuthorizationType = authority.AccountByID
+	authParams.HomeAccountID = account.HomeAccountID
+	key := authParams.CacheKey(false)
 	err := b.cacheAccessor.Replace(ctx, b.manager, cache.ReplaceHints{PartitionKey: key})
 	if err != nil {
 		return err
 	}
-	b.manager.RemoveAccount(account, b.AuthParams.ClientID)
+	b.manager.RemoveAccount(account, authParams.ClientID)
 	return b.cacheAccessor.Export(ctx, b.manager, cache.ExportHints{PartitionKey: key})
 }
