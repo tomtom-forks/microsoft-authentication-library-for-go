@@ -26,7 +26,7 @@ type Contract struct {
 	Accounts      map[string]shared.Account            `json:"Account,omitempty"`
 	AppMetaData   map[string]AppMetaData               `json:"AppMetadata,omitempty"`
 
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 // Contract is the JSON structure that is written to any storage medium when serializing
@@ -59,7 +59,7 @@ func NewContract() *Contract {
 		IDTokens:         map[string]IDToken{},
 		Accounts:         map[string]shared.Account{},
 		AppMetaData:      map[string]AppMetaData{},
-		AdditionalFields: map[string]interface{}{},
+		AdditionalFields: map[string]any{},
 	}
 }
 
@@ -81,7 +81,7 @@ type AccessToken struct {
 	AuthnSchemeKeyID  string            `json:"keyid,omitempty"`
 	ExtCacheKey       string            `json:"ext_cache_key,omitempty"`
 
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 // NewAccessToken is the constructor for AccessToken.
@@ -153,7 +153,7 @@ type IDToken struct {
 	ClientID          string `json:"client_id,omitempty"`
 	Secret            string `json:"secret,omitempty"`
 	UserAssertionHash string `json:"user_assertion_hash,omitempty"`
-	AdditionalFields  map[string]interface{}
+	AdditionalFields  map[string]any
 }
 
 // IsZero determines if IDToken is the zero value.
@@ -201,7 +201,7 @@ type AppMetaData struct {
 	ClientID    string `json:"client_id,omitempty"`
 	Environment string `json:"environment,omitempty"`
 
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 // NewAppMetaData is the constructor for AppMetaData.

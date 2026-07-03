@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func unmarshalStruct(jdec *json.Decoder, i interface{}) error {
+func unmarshalStruct(jdec *json.Decoder, i any) error {
 	v := reflect.ValueOf(i)
 	if v.Kind() != reflect.Pointer {
 		return fmt.Errorf("Unmarshal() received type %T, which is not a *struct", i)
@@ -283,8 +283,8 @@ func findFields(v reflect.Value) (translateFields, error) {
 // parseTag just returns the first entry in the tag. tag is the string
 // returned by reflect.StructField.Tag().Get().
 func parseTag(tag string) string {
-	if idx := strings.Index(tag, ","); idx != -1 {
-		return tag[:idx]
+	if before, _, ok := strings.Cut(tag, ","); ok {
+		return before
 	}
 	return tag
 }

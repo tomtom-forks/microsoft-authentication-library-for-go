@@ -60,7 +60,7 @@ const (
 )
 
 type urlFormCaller interface {
-	URLFormCall(ctx context.Context, endpoint string, qv url.Values, resp interface{}) error
+	URLFormCall(ctx context.Context, endpoint string, qv url.Values, resp any) error
 }
 
 // DeviceCodeResponse represents the HTTP response received from the device code endpoint
@@ -74,7 +74,7 @@ type DeviceCodeResponse struct {
 	Interval        int    `json:"interval"`
 	Message         string `json:"message"`
 
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 // Convert converts the DeviceCodeResponse to a DeviceCodeResult
@@ -135,7 +135,7 @@ func (c *Credential) JWT(ctx context.Context, authParams authority.AuthParams) (
 	}
 
 	token := jwt.NewWithClaims(signingMethod, claims)
-	token.Header = map[string]interface{}{
+	token.Header = map[string]any{
 		"alg":         signingMethod.Alg(),
 		"typ":         "JWT",
 		thumbprintKey: base64.StdEncoding.EncodeToString(thumbprint(c.Cert, signingMethod.Alg())),

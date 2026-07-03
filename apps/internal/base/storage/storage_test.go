@@ -753,7 +753,7 @@ func TestStorageManagerSerialize(t *testing.T) {
 	contract := &Contract{
 		AccessTokens: map[string]AccessToken{
 			"an-entry": {
-				AdditionalFields: map[string]interface{}{
+				AdditionalFields: map[string]any{
 					"foo": "bar",
 				},
 			},

@@ -42,10 +42,10 @@ type fakeURLCaller struct {
 
 	gotEndpoint string
 	gotQV       url.Values
-	gotResp     interface{}
+	gotResp     any
 }
 
-func (f *fakeURLCaller) URLFormCall(ctx context.Context, endpoint string, qv url.Values, resp interface{}) error {
+func (f *fakeURLCaller) URLFormCall(ctx context.Context, endpoint string, qv url.Values, resp any) error {
 	if f.err {
 		return errors.New("error")
 	}

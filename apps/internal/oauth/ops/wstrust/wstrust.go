@@ -21,8 +21,8 @@ import (
 )
 
 type xmlCaller interface {
-	XMLCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, resp interface{}) error
-	SOAPCall(ctx context.Context, endpoint, action string, headers http.Header, qv url.Values, body string, resp interface{}) error
+	XMLCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, resp any) error
+	SOAPCall(ctx context.Context, endpoint, action string, headers http.Header, qv url.Values, body string, resp any) error
 }
 
 type SamlTokenInfo struct {

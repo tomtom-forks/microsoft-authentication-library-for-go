@@ -201,7 +201,7 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	s.putResult(Result{Code: code})
 }
 
-func (s *Server) error(w http.ResponseWriter, code int, str string, i ...interface{}) {
+func (s *Server) error(w http.ResponseWriter, code int, str string, i ...any) {
 	err := fmt.Errorf(str, i...)
 	http.Error(w, err.Error(), code)
 	s.putResult(Result{Err: err})

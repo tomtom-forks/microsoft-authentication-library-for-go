@@ -13,8 +13,8 @@ import (
 func TestMarshalStruct(t *testing.T) {
 	tests := []struct {
 		desc  string
-		value interface{}
-		want  map[string]interface{}
+		value any
+		want  map[string]any
 		err   bool
 	}{
 		{
@@ -26,7 +26,7 @@ func TestMarshalStruct(t *testing.T) {
 				Name: "my name",
 				Int:  5,
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"Name": "my name",
 				"Int":  5,
 			},
@@ -36,16 +36,16 @@ func TestMarshalStruct(t *testing.T) {
 			value: &struct {
 				Name             string
 				Int              int
-				AdditionalFields map[string]interface{} `json:"-"`
+				AdditionalFields map[string]any `json:"-"`
 			}{
 				Name: "John Doak",
 				Int:  45,
-				AdditionalFields: map[string]interface{}{
+				AdditionalFields: map[string]any{
 					"Hello": "World",
 					"Float": 3.2,
 				},
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"Name":  "John Doak",
 				"Int":   45,
 				"Float": 3.2,
@@ -79,19 +79,19 @@ func TestMarshalStruct(t *testing.T) {
 				ID:   3,
 				Meta: &StructB{
 					Address: "291 Street",
-					AdditionalFields: map[string]interface{}{
+					AdditionalFields: map[string]any{
 						"unknown0": MarshalRaw(3.2),
 					},
 				},
-				AdditionalFields: map[string]interface{}{
+				AdditionalFields: map[string]any{
 					"unknown0": MarshalRaw(10),
 					"unknown1": MarshalRaw("hello"),
 				},
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"Name": "John",
 				"id":   3,
-				"Meta": map[string]interface{}{
+				"Meta": map[string]any{
 					"Address":  "291 Street",
 					"unknown0": 3.2,
 				},
@@ -103,17 +103,17 @@ func TestMarshalStruct(t *testing.T) {
 			desc: "Struct with map[string]interface{}",
 			value: struct {
 				Name             string
-				Map              map[string]interface{}
-				AdditionalFields map[string]interface{}
+				Map              map[string]any
+				AdditionalFields map[string]any
 			}{
 				Name: "John",
-				Map: map[string]interface{}{
+				Map: map[string]any{
 					"key": "value",
 				},
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"Name": "John",
-				"Map": map[string]interface{}{
+				"Map": map[string]any{
 					"key": "value",
 				},
 			},
@@ -123,7 +123,7 @@ func TestMarshalStruct(t *testing.T) {
 			value: struct {
 				Name             string
 				Map              map[string]StructB
-				AdditionalFields map[string]interface{}
+				AdditionalFields map[string]any
 			}{
 				Name: "John",
 				Map: map[string]StructB{
@@ -132,10 +132,10 @@ func TestMarshalStruct(t *testing.T) {
 					},
 				},
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"Name": "John",
-				"Map": map[string]interface{}{
-					"key": map[string]interface{}{
+				"Map": map[string]any{
+					"key": map[string]any{
 						"Address": "addr",
 					},
 				},
@@ -145,19 +145,19 @@ func TestMarshalStruct(t *testing.T) {
 			desc: "Struct with map[string][]<basic type>",
 			value: struct {
 				Name             string
-				Map              map[string]interface{}
-				AdditionalFields map[string]interface{}
+				Map              map[string]any
+				AdditionalFields map[string]any
 			}{
 				Name: "John",
-				Map: map[string]interface{}{
+				Map: map[string]any{
 					"key": []string{
 						"apples",
 					},
 				},
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"Name": "John",
-				"Map": map[string]interface{}{
+				"Map": map[string]any{
 					"key": []string{"apples"},
 				},
 			},
@@ -167,7 +167,7 @@ func TestMarshalStruct(t *testing.T) {
 			value: struct {
 				Name             string
 				Map              map[string][]StructB
-				AdditionalFields map[string]interface{}
+				AdditionalFields map[string]any
 			}{
 				Name: "John",
 				Map: map[string][]StructB{
@@ -176,11 +176,11 @@ func TestMarshalStruct(t *testing.T) {
 					},
 				},
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"Name": "John",
-				"Map": map[string]interface{}{
-					"key": []interface{}{
-						map[string]interface{}{
+				"Map": map[string]any{
+					"key": []any{
+						map[string]any{
 							"Address": "addr",
 						},
 					},
@@ -202,7 +202,7 @@ func TestMarshalStruct(t *testing.T) {
 			continue
 		}
 
-		got := map[string]interface{}{}
+		got := map[string]any{}
 		if err := json.Unmarshal(b, &got); err != nil {
 			t.Errorf("TestMarshal(%s): Marshal produced invalid JSON:\n%s\n%s", test.desc, err, string(b))
 			continue
@@ -221,7 +221,7 @@ func TestEmptyTypes(t *testing.T) {
 		EmptyInt   int
 		Int        int
 
-		AdditionalFields map[string]interface{}
+		AdditionalFields map[string]any
 	}
 
 	val := structA{

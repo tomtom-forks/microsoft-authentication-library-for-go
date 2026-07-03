@@ -326,8 +326,8 @@ func (s *sliceEncode) encode() (stateFn, error) {
 
 // writeAddFields writes the AdditionalFields struct field out to JSON as field
 // values. i must be a map[string]interface{} or this will panic.
-func writeAddFields(i interface{}, buff *bytes.Buffer, enc *json.Encoder) error {
-	m := i.(map[string]interface{})
+func writeAddFields(i any, buff *bytes.Buffer, enc *json.Encoder) error {
+	m := i.(map[string]any)
 
 	x := 0
 	for k, v := range m {

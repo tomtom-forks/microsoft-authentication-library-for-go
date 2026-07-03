@@ -22,7 +22,7 @@ type recorder struct {
 	xml bool
 
 	statusCode int
-	ret        interface{}
+	ret        any
 
 	gotMethod  string
 	gotQV      url.Values
@@ -92,13 +92,13 @@ func TestJSONCall(t *testing.T) {
 		statusCode int
 		headers    http.Header
 		qv         url.Values
-		body, resp interface{}
+		body, resp any
 
 		expectMethod  string
 		expectHeaders http.Header
-		expectBody    interface{}
+		expectBody    any
 
-		want interface{}
+		want any
 		err  bool
 	}{
 		{
@@ -211,12 +211,12 @@ func TestXMLCall(t *testing.T) {
 		statusCode int
 		headers    http.Header
 		qv         url.Values
-		resp       interface{}
+		resp       any
 
 		expectHeaders http.Header
-		expectBody    interface{}
+		expectBody    any
 
-		want interface{}
+		want any
 		err  bool
 	}{
 		{
@@ -326,12 +326,12 @@ func TestSoapCall(t *testing.T) {
 		body       string
 		headers    http.Header
 		qv         url.Values
-		resp       interface{}
+		resp       any
 
 		expectHeaders http.Header
-		expectBody    interface{}
+		expectBody    any
 
-		want interface{}
+		want any
 		err  bool
 	}{
 		{
@@ -446,12 +446,12 @@ func TestURLFormCall(t *testing.T) {
 		body       string
 		headers    http.Header
 		qv         url.Values
-		resp       interface{}
+		resp       any
 
 		expectHeaders  http.Header
 		expectEndpoint string
 
-		want interface{}
+		want any
 		err  bool
 	}{
 		{
