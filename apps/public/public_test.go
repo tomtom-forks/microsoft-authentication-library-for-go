@@ -135,6 +135,7 @@ func TestAcquireTokenSilentWithTenantID(t *testing.T) {
 	clientInfo := base64.RawStdEncoding.EncodeToString([]byte(`{"uid":"uid","utid":"utid"}`))
 	ctx := context.Background()
 	// cache an access token for each tenant. To simplify determining their provenance below, the value of each token is the ID of the tenant that provided it.
+	accountByTenant := map[string]Account{}
 	for _, tenant := range []string{tenantA, tenantB} {
 		mockClient.AppendResponse(mock.WithBody(mock.GetTenantDiscoveryBody(lmo, tenant)))
 		mockClient.AppendResponse(mock.WithBody([]byte(`{"account_type":"Managed","cloud_audience_urn":"urn","cloud_instance_name":"...","domain_name":"..."}`)))
@@ -148,18 +149,16 @@ func TestAcquireTokenSilentWithTenantID(t *testing.T) {
 		if ar.AccessToken != tenant {
 			t.Fatalf(`unexpected token "%s"`, ar.AccessToken)
 		}
+		accountByTenant[tenant] = ar.Account
 	}
 
 	// cache should return the correct access token for each tenant
-	var account Account
 	accounts, err := client.Accounts(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// expecting one account for each tenant we authenticated in above
-	if len(accounts) == 2 {
-		account = accounts[0]
-	} else {
+	if len(accounts) != 2 {
 		t.Fatalf("expected 2 accounts but got %d", len(accounts))
 	}
 	mockClient.AppendResponse(mock.WithBody(mock.GetInstanceDiscoveryBody(lmo, tenantA)))
@@ -168,11 +167,11 @@ func TestAcquireTokenSilentWithTenantID(t *testing.T) {
 		opts           []AcquireSilentOption
 	}{
 		// when no tenant is specified the client should return the cached token for its configured authority
-		{"no tenant specified", tenantA, []AcquireSilentOption{WithSilentAccount(account)}},
+		{"no tenant specified", tenantA, []AcquireSilentOption{WithSilentAccount(accountByTenant[tenantA])}},
 
 		// when a tenant is specified the client should return the cached token for that tenant
-		{"redundant tenant specified", tenantA, []AcquireSilentOption{WithSilentAccount(account), WithTenantID(tenantA)}},
-		{"different tenant specified", tenantB, []AcquireSilentOption{WithSilentAccount(account), WithTenantID(tenantB)}},
+		{"redundant tenant specified", tenantA, []AcquireSilentOption{WithSilentAccount(accountByTenant[tenantA]), WithTenantID(tenantA)}},
+		{"different tenant specified", tenantB, []AcquireSilentOption{WithSilentAccount(accountByTenant[tenantB]), WithTenantID(tenantB)}},
 	} {
 		t.Run(test.desc, func(t *testing.T) {
 			ar, err := client.AcquireTokenSilent(ctx, tokenScope, test.opts...)

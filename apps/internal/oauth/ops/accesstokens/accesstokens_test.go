@@ -1159,6 +1159,35 @@ func TestHomeAccountID(t *testing.T) {
 			},
 			want: "uid.utid",
 		},
+		{
+			// Member: IDToken.TenantID == ClientInfo.UTID — home tenant is the resource tenant.
+			desc: "member account: TenantID matches UTID",
+			tr: TokenResponse{
+				ClientInfo: ClientInfo{UID: "ded7356c", UTID: "374f8026"},
+				IDToken:    IDToken{Oid: "ded7356c", TenantID: "374f8026", Subject: "subject"},
+			},
+			want: "ded7356c.374f8026",
+		},
+		{
+			// Guest (B2B): ClientInfo carries the home-tenant IDs; IDToken carries the
+			// resource-tenant OID and TID. We want the resource-tenant identity so that
+			// the cached token can be looked up by callers who only know the resource tenant.
+			desc: "guest account: TenantID differs from UTID",
+			tr: TokenResponse{
+				ClientInfo: ClientInfo{UID: "f155ef94", UTID: "966afb66"},
+				IDToken:    IDToken{Oid: "cd9772b7", TenantID: "374f8026", Subject: "subject"},
+			},
+			want: "cd9772b7.374f8026",
+		},
+		{
+			// No ID token (e.g. client-credentials flow): federated branch must not fire.
+			desc: "guest ClientInfo but no IDToken TenantID: falls back to UID.UTID",
+			tr: TokenResponse{
+				ClientInfo: ClientInfo{UID: "f155ef94", UTID: "966afb66"},
+				IDToken:    IDToken{Subject: "subject"},
+			},
+			want: "f155ef94.966afb66",
+		},
 	}
 
 	for _, test := range tests {
