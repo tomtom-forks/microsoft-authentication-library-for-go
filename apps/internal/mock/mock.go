@@ -131,7 +131,7 @@ func GetAccessTokenBody(accessToken, idToken, refreshToken, clientInfo string, e
 
 func GetIDToken(tenant, issuer string) string {
 	now := time.Now().Unix()
-	payload := []byte(fmt.Sprintf(`{"aud": "%s","exp": %d,"iat": %d,"iss": "%s","tid": "%s"}`, tenant, now+3600, now, issuer, tenant))
+	payload := []byte(fmt.Sprintf(`{"aud": "%s","exp": %d,"iat": %d,"iss": "%s","tid": "%s","oid": "uid"}`, tenant, now+3600, now, issuer, tenant))
 	return fmt.Sprintf("header.%s.signature", base64.RawStdEncoding.EncodeToString(payload))
 }
 

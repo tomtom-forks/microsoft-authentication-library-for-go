@@ -260,15 +260,26 @@ func (tr *TokenResponse) ComputeScope(authParams authority.AuthParams) {
 
 // HomeAccountID uniquely identifies the authenticated account, if any. It's "" when the token is an app token.
 func (tr *TokenResponse) HomeAccountID() string {
-	id := tr.IDToken.Subject
-	if uid := tr.ClientInfo.UID; uid != "" {
-		utid := tr.ClientInfo.UTID
-		if utid == "" {
-			utid = uid
-		}
-		id = fmt.Sprintf("%s.%s", uid, utid)
+	uid := tr.ClientInfo.UID
+	if uid == "" {
+		return tr.IDToken.Subject
 	}
-	return id
+
+	utid := tr.ClientInfo.UTID
+	tid := tr.IDToken.TenantID
+
+	switch {
+	case utid == "":
+		utid = uid
+	case tid != "" && utid != tid:
+		// Federated account: ClientInfo.UTID is the home tenant, IDToken.TenantID
+		// is the resource tenant. Use the resource-tenant OID so callers who know
+		// only the resource tenant can find the cached token.
+		utid = tr.IDToken.TenantID
+		uid = tr.IDToken.Oid
+	}
+
+	return fmt.Sprintf("%s.%s", uid, utid)
 }
 
 // Validate validates the TokenResponse has basic valid values. It must be called
