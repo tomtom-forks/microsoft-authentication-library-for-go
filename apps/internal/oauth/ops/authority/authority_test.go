@@ -29,11 +29,11 @@ type fakeJSONCaller struct {
 	gotEndpoint string
 	gotHeaders  http.Header
 	gotQV       url.Values
-	gotBody     interface{}
-	gotResp     interface{}
+	gotBody     any
+	gotResp     any
 }
 
-func (f *fakeJSONCaller) JSONCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, body, resp interface{}) error {
+func (f *fakeJSONCaller) JSONCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, body, resp any) error {
 	if f.err {
 		return errors.New("error")
 	}
@@ -52,7 +52,7 @@ func (f *fakeJSONCaller) JSONCall(ctx context.Context, endpoint string, headers 
 	return nil
 }
 
-func (f *fakeJSONCaller) compare(endpoint string, headers http.Header, qv url.Values, body, resp interface{}) error {
+func (f *fakeJSONCaller) compare(endpoint string, headers http.Header, qv url.Values, body, resp any) error {
 	if f.gotEndpoint != endpoint {
 		return fmt.Errorf("got endpoint == %s, want endpoint == %s", f.gotEndpoint, endpoint)
 	}
@@ -66,7 +66,7 @@ func (f *fakeJSONCaller) compare(endpoint string, headers http.Header, qv url.Va
 		return fmt.Errorf("body -want/+got:\n%s", diff)
 	}
 	gotValue := reflect.ValueOf(f.gotResp)
-	if gotValue.Kind() != reflect.Ptr {
+	if gotValue.Kind() != reflect.Pointer {
 		return fmt.Errorf("resp cannot be a non-pointer type")
 	}
 	gotValue = gotValue.Elem()
@@ -101,7 +101,7 @@ func TestUserRealm(t *testing.T) {
 		jsonResp *UserRealm
 		headers  http.Header
 		qv       url.Values
-		resp     interface{}
+		resp     any
 	}{
 		{
 			desc: "Error: comm returns error",
@@ -163,7 +163,7 @@ func TestTenantDiscoveryResponse(t *testing.T) {
 		desc     string
 		err      bool
 		endpoint string
-		resp     interface{}
+		resp     any
 	}{
 		{
 			desc: "Error: comm returns error",
@@ -208,7 +208,7 @@ func TestAADInstanceDiscovery(t *testing.T) {
 		authInfo Info
 		endpoint string
 		qv       url.Values
-		resp     interface{}
+		resp     any
 	}{
 		{
 			desc: "Error: comm returns error",
@@ -830,7 +830,7 @@ type fakeCallErrCaller struct {
 	gotEndpoint string
 }
 
-func (f *fakeCallErrCaller) JSONCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, body, resp interface{}) error {
+func (f *fakeCallErrCaller) JSONCall(ctx context.Context, endpoint string, headers http.Header, qv url.Values, body, resp any) error {
 	f.gotEndpoint = endpoint
 	return msalerrors.CallErr{
 		Req: &http.Request{URL: &url.URL{Path: endpoint}},

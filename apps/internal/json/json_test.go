@@ -17,29 +17,29 @@ type StructA struct {
 	Name             string
 	ID               int `json:"id"`
 	Meta             *StructB
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 type StructB struct {
 	Address          string
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 type StructC struct {
 	Time             time.Time
 	Project          StructD
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 type StructD struct {
 	Project          string
 	Info             StructE
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 type StructE struct {
 	Employees        int
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 func TestUnmarshalRoundTrip(t *testing.T) {
@@ -52,8 +52,8 @@ func TestUnmarshalRoundTrip(t *testing.T) {
 	tests := []struct {
 		desc string
 		b    []byte
-		got  interface{}
-		want interface{}
+		got  any
+		want any
 		err  bool
 	}{
 		{
@@ -98,11 +98,11 @@ func TestUnmarshalRoundTrip(t *testing.T) {
 				ID:   3,
 				Meta: &StructB{
 					Address: "291 Street",
-					AdditionalFields: map[string]interface{}{
+					AdditionalFields: map[string]any{
 						"unknown0": MarshalRaw(3.2),
 					},
 				},
-				AdditionalFields: map[string]interface{}{
+				AdditionalFields: map[string]any{
 					"unknown0": MarshalRaw(10),
 					"unknown1": MarshalRaw("hello"),
 				},
@@ -215,7 +215,7 @@ func (p *panicUnmarshaler) UnmarshalJSON(_ []byte) error {
 
 type withPanicField struct {
 	Inner            map[string]panicUnmarshaler
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 // TestUnmarshalPanicRecovery verifies that a panic originating deep in the
@@ -253,17 +253,17 @@ func (r *runtimePanicUnmarshaler) UnmarshalJSON(_ []byte) error {
 
 type runtimePanicMapHolder struct {
 	Inner            map[string]runtimePanicUnmarshaler
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 type runtimePanicSliceHolder struct {
 	Inner            []runtimePanicUnmarshaler
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 type runtimePanicStructHolder struct {
 	Inner            runtimePanicUnmarshaler
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 // TestUnmarshalRuntimePanicRecovery is a regression test that locks in
@@ -280,7 +280,7 @@ func TestUnmarshalRuntimePanicRecovery(t *testing.T) {
 	tests := []struct {
 		name   string
 		input  string
-		target interface{}
+		target any
 	}{
 		{
 			name:   "map of struct (issue #579 stack)",

@@ -54,7 +54,7 @@ func (m *authorityEndpoint) ResolveEndpoints(ctx context.Context, authorityInfo 
 	}
 
 	key := authorityInfo.CanonicalAuthorityURI
-	v, err, _ := m.resolveGroup.Do(key, func() (interface{}, error) {
+	v, err, _ := m.resolveGroup.Do(key, func() (any, error) {
 		// Double-check inside the singleflight group: another goroutine may
 		// have populated the cache while we were waiting.
 		if endpoints, found := m.cachedEndpoints(authorityInfo, userPrincipalName); found {

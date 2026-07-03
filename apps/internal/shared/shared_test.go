@@ -22,7 +22,7 @@ var (
 )
 
 func TestAccountUnmarshal(t *testing.T) {
-	jsonMap := map[string]interface{}{
+	jsonMap := map[string]any{
 		"home_account_id": "hid",
 		"environment":     "env",
 		"extra":           "this_is_extra",
@@ -38,7 +38,7 @@ func TestAccountUnmarshal(t *testing.T) {
 		HomeAccountID: accHID,
 		Environment:   accEnv,
 		AuthorityType: authType,
-		AdditionalFields: map[string]interface{}{
+		AdditionalFields: map[string]any{
 			"extra": json.MarshalRaw("this_is_extra"),
 		},
 	}
@@ -75,10 +75,10 @@ func TestAccountMarshal(t *testing.T) {
 		LocalAccountID:    accLid,
 		AuthorityType:     authType,
 		PreferredUsername: accUser,
-		AdditionalFields:  map[string]interface{}{"extra": "extra"},
+		AdditionalFields:  map[string]any{"extra": "extra"},
 	}
 
-	want := map[string]interface{}{
+	want := map[string]any{
 		"home_account_id":  "hid",
 		"environment":      "env",
 		"realm":            "realm",
@@ -92,7 +92,7 @@ func TestAccountMarshal(t *testing.T) {
 		panic(err)
 	}
 
-	got := map[string]interface{}{}
+	got := map[string]any{}
 	if err := stdJSON.Unmarshal(b, &got); err != nil {
 		panic(err)
 	}
