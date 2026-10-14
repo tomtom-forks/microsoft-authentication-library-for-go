@@ -14,6 +14,7 @@ package accesstokens
 import (
 	"context"
 	"crypto"
+	"uuid"
 
 	/* #nosec */
 	"crypto/sha1"
@@ -32,7 +33,6 @@ import (
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/oauth/ops/internal/grant"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/oauth/ops/wstrust"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
 const (

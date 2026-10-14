@@ -1,13 +1,12 @@
 module github.com/AzureAD/microsoft-authentication-library-for-go
 
-go 1.18
+go 1.27.2
 
 // v1.10.0 was re-tagged after publication; use v1.10.1.
 retract v1.10.0
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.2.2
-	github.com/google/uuid v1.3.0
 	github.com/kylelemons/godebug v1.1.0
 	github.com/montanaflynn/stats v0.7.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8

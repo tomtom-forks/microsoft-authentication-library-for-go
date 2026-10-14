@@ -7,9 +7,9 @@ import (
 	"encoding/xml"
 	"fmt"
 	"time"
+	"uuid"
 
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/oauth/ops/authority"
-	uuid "github.com/google/uuid"
 )
 
 //go:generate stringer -type=Version
