@@ -827,7 +827,7 @@ func (a *AuthParams) CacheExtKeyGenerator() string {
 	var keyStr strings.Builder
 	for _, key := range keys {
 		val := a.CacheKeyComponents[key]
-		keyStr.WriteString(fmt.Sprintf("%d:%s%d:%s", len(key), key, len(val), val))
+		fmt.Fprintf(&keyStr, "%d:%s%d:%s", len(key), key, len(val), val)
 	}
 
 	hash := sha256.Sum256([]byte(keyStr.String()))
