@@ -69,6 +69,12 @@ type AuthenticationScheme = authority.AuthenticationScheme
 
 type Account = shared.Account
 
+// IDToken is the decoded ID token claims MSAL models, part of AuthResult.
+// Aliased here (TomTom fork addition) because
+// apps/internal/oauth/ops/accesstokens is an internal package and otherwise
+// unnameable by callers outside this module.
+type IDToken = accesstokens.IDToken
+
 type TokenSource = base.TokenSource
 
 const (
