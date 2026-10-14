@@ -53,6 +53,7 @@ func populateCache(users int, tokens int, authParams authority.AuthParams, clien
 			_, err := client.AuthResultFromToken(context.Background(), authParams, accesstokens.TokenResponse{
 				AccessToken:   fmt.Sprintf("fake_access_token%d", user),
 				RefreshToken:  "fake_refresh_token",
+				TokenType:     "Bearer",
 				ClientInfo:    accesstokens.ClientInfo{UID: "my_uid", UTID: fmt.Sprintf("%dmy_utid", user)},
 				ExpiresOn:     time.Now().Add(1 * time.Hour),
 				GrantedScopes: accesstokens.Scopes{Slice: []string{scope}},
