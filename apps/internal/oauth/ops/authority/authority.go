@@ -857,12 +857,12 @@ func (a *AuthParams) CacheExtKeyGenerator() string {
 	// key or value (client_claims, for example, is arbitrary caller-supplied
 	// JSON), which would map two distinct component sets to the same hash and
 	// return the wrong cached token. Length prefixes make the encoding injective.
-	var sb strings.Builder
+	var keyStr strings.Builder
 	for _, key := range keys {
 		val := a.CacheKeyComponents[key]
-		fmt.Fprintf(&sb, "%d:%s%d:%s", len(key), key, len(val), val)
+		fmt.Fprintf(&keyStr, "%d:%s%d:%s", len(key), key, len(val), val)
 	}
 
-	hash := sha256.Sum256([]byte(sb.String()))
+	hash := sha256.Sum256([]byte(keyStr.String()))
 	return strings.ToLower(base64.RawURLEncoding.EncodeToString(hash[:]))
 }

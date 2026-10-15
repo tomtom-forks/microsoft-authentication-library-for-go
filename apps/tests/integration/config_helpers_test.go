@@ -97,26 +97,26 @@ var (
 	appCache  = make(map[string]*AppConfig)
 	cacheMu   sync.RWMutex
 
-	msidClient   confidential.Client
-	msalClient   confidential.Client
-	clientInitMu sync.Once
+	msidClient    confidential.Client
+	msalClient    confidential.Client
+	clientInitMu  sync.Once
+	clientInitErr error
 
 	httpClient = http.Client{}
 )
 
 // initKeyVaultClients initializes the Key Vault access clients using cert auth
 func initKeyVaultClients() error {
-	var initErr error
 	clientInitMu.Do(func() {
 		cert, privateKey, err := getCertDataFromFile(pemFile)
 		if err != nil {
-			initErr = fmt.Errorf("failed to load cert: %w", err)
+			clientInitErr = fmt.Errorf("failed to load cert: %w", err)
 			return
 		}
 
 		cred, err := confidential.NewCredFromCert(cert, privateKey)
 		if err != nil {
-			initErr = fmt.Errorf("failed to create cert credential: %w", err)
+			clientInitErr = fmt.Errorf("failed to create cert credential: %w", err)
 			return
 		}
 
@@ -128,14 +128,14 @@ func initKeyVaultClients() error {
 			confidential.WithX5C(),
 		)
 		if err != nil {
-			initErr = fmt.Errorf("failed to create MSID client: %w", err)
+			clientInitErr = fmt.Errorf("failed to create MSID client: %w", err)
 			return
 		}
 
 		// Client for MSAL Team vault (configs) - same client works for both
 		msalClient = msidClient
 	})
-	return initErr
+	return clientInitErr
 }
 
 // GetSecret retrieves a secret from Key Vault by name
