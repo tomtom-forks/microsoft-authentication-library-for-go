@@ -30,11 +30,11 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          # A GITHUB_TOKEN cannot force-push to a protected branch or push
-          # changes under .github/workflows. SYNC_TOKEN must be a PAT (or GitHub
-          # App token) with contents + workflows write that is allowed to bypass
-          # the "no force-push" rule on main.
-          token: ${{ secrets.SYNC_TOKEN }}
+          # A GITHUB_TOKEN cannot force-push to a protected branch. SYNC_DEPLOY_KEY
+          # is the private half of a write-enabled deploy key that is a bypass
+          # actor on the "no force-push" rule for main. checkout configures origin
+          # to use it over SSH, so every later git push/ls-remote uses it too.
+          ssh-key: ${{ secrets.SYNC_DEPLOY_KEY }}
 
       - name: Configure git identity
         run: |
