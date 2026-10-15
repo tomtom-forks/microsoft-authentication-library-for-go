@@ -79,7 +79,7 @@ func marshalStruct(v reflect.Value, buff *bytes.Buffer, enc *json.Encoder) error
 
 		// Write out the field name part.
 		jsonName := translator.jsonName(t.Field(x).Name)
-		buff.WriteString(fmt.Sprintf("%q:", jsonName))
+		fmt.Fprintf(buff, "%q:", jsonName)
 
 		if field.Kind() == reflect.Pointer {
 			field = field.Elem()
@@ -196,7 +196,7 @@ func (m *mapEncode) encode() (stateFn, error) {
 	for iter.Next() {
 		// Write the key.
 		k := iter.Key()
-		m.buff.WriteString(fmt.Sprintf("%q:", k.String()))
+		fmt.Fprintf(m.buff, "%q:", k.String())
 
 		v := iter.Value()
 		switch m.valueBaseType.Kind() {
@@ -331,7 +331,7 @@ func writeAddFields(i any, buff *bytes.Buffer, enc *json.Encoder) error {
 
 	x := 0
 	for k, v := range m {
-		buff.WriteString(fmt.Sprintf("%q:", k))
+		fmt.Fprintf(buff, "%q:", k)
 		if err := enc.Encode(v); err != nil {
 			return err
 		}

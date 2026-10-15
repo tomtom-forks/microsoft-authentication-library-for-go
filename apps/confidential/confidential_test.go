@@ -11,7 +11,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -47,12 +46,7 @@ func (*errorClient) Do(req *http.Request) (*http.Response, error) {
 func (*errorClient) CloseIdleConnections() {}
 
 func TestCertFromPEM(t *testing.T) {
-	f, err := os.Open(filepath.Clean("../testdata/test-cert.pem"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
-	pemData, err := io.ReadAll(f)
+	pemData, err := os.ReadFile(filepath.Clean("../testdata/test-cert.pem"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,11 +245,14 @@ func TestRegionAutoEnable_EmptyRegion_EnvRegion(t *testing.T) {
 	}
 
 	envRegion := "envRegion"
-	err = os.Setenv("MSAL_FORCE_REGION", envRegion)
-	if err != nil {
+	if err := os.Setenv("MSAL_FORCE_REGION", envRegion); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Unsetenv("MSAL_FORCE_REGION")
+	t.Cleanup(func() {
+		if err := os.Unsetenv("MSAL_FORCE_REGION"); err != nil {
+			t.Errorf("failed to unset MSAL_FORCE_REGION: %v", err)
+		}
+	})
 
 	lmo := "login.microsoftonline.com"
 	tenant := "tenant"
@@ -376,6 +373,62 @@ func TestAcquireTokenOnBehalfOf(t *testing.T) {
 	}
 	if tk.AccessToken != token2 {
 		t.Fatal("expected a new token")
+	}
+}
+
+func TestAcquireTokenOnBehalfOfProactiveRefreshUsesDelegatedGrant(t *testing.T) {
+	originalNow := base.Now
+	defer func() { base.Now = originalNow }()
+
+	cred, err := NewCredFromSecret(fakeSecret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lmo := "login.microsoftonline.com"
+	tenant := "tenant"
+	assertion := "assertion"
+	initialToken := "obo-initial"
+	refreshedToken := "obo-refreshed"
+	mockClient := mock.NewClient()
+	mockClient.AppendResponse(mock.WithBody(mock.GetInstanceDiscoveryBody(lmo, tenant)))
+	mockClient.AppendResponse(mock.WithBody(mock.GetTenantDiscoveryBody(lmo, tenant)))
+	mockClient.AppendResponse(mock.WithBody(mock.GetAccessTokenBody(initialToken, "", "rt", "", 86400, 1)))
+
+	client, err := New(fmt.Sprintf(authorityFmt, lmo, tenant), fakeClientID, cred, WithHTTPClient(mockClient))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if _, err = client.AcquireTokenOnBehalfOf(ctx, assertion, tokenScope); err != nil {
+		t.Fatal(err)
+	}
+
+	refreshedAt := originalNow().Add(2 * time.Second)
+	base.Now = func() time.Time { return refreshedAt }
+	mockClient.AppendResponse(mock.WithBody(mock.GetAccessTokenBody(refreshedToken, "", "rt", "", 86400, 0)), mock.WithCallback(func(req *http.Request) {
+		if err := req.ParseForm(); err != nil {
+			t.Fatal(err)
+		}
+		if got := req.Form.Get("grant_type"); got != "urn:ietf:params:oauth:grant-type:jwt-bearer" {
+			t.Fatalf("expected on-behalf-of grant, got %q", got)
+		}
+		if got := req.Form.Get("requested_token_use"); got != "on_behalf_of" {
+			t.Fatalf("expected on_behalf_of token use, got %q", got)
+		}
+		if got := req.Form.Get("assertion"); got != assertion {
+			t.Fatalf("expected original user assertion %q, got %q", assertion, got)
+		}
+		if got := req.Form.Get("client_secret"); got != fakeSecret {
+			t.Fatalf("expected client secret %q, got %q", fakeSecret, got)
+		}
+	}))
+
+	result, err := client.AcquireTokenOnBehalfOf(ctx, assertion, tokenScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.AccessToken != refreshedToken {
+		t.Fatalf("expected refreshed token %q, got %q", refreshedToken, result.AccessToken)
 	}
 }
 
@@ -525,7 +578,17 @@ func TestAcquireTokenByAuthCodeTokenExpiry(t *testing.T) {
 	mockClient := mock.NewClient()
 	mockClient.AppendResponse(mock.WithBody(mock.GetTenantDiscoveryBody(lmo, "common")))
 	mockClient.AppendResponse(mock.WithBody(mock.GetAccessTokenBody(accessToken, mock.GetIDToken(homeTenant, fmt.Sprintf(authorityFmt, lmo, homeTenant)), "rt", clientInfo, 36000, 1000)))
-	mockClient.AppendResponse(mock.WithBody(mock.GetAccessTokenBody(newAccessToken, mock.GetIDToken(homeTenant, fmt.Sprintf(authorityFmt, lmo, homeTenant)), "rt", clientInfo, 36000, 1000)))
+	mockClient.AppendResponse(mock.WithBody(mock.GetAccessTokenBody(newAccessToken, mock.GetIDToken(homeTenant, fmt.Sprintf(authorityFmt, lmo, homeTenant)), "rt", clientInfo, 36000, 1000)), mock.WithCallback(func(req *http.Request) {
+		if err := req.ParseForm(); err != nil {
+			t.Fatal(err)
+		}
+		if got := req.Form.Get("grant_type"); got != "refresh_token" {
+			t.Fatalf("expected refresh token grant, got %q", got)
+		}
+		if got := req.Form.Get("refresh_token"); got != "rt" {
+			t.Fatalf("expected refresh token %q, got %q", "rt", got)
+		}
+	}))
 
 	client, err := New(fmt.Sprintf(authorityFmt, lmo, "common"), fakeClientID, cred, WithHTTPClient(mockClient), WithInstanceDiscovery(false))
 	if err != nil {
@@ -757,12 +820,7 @@ func TestNewCredFromCert(t *testing.T) {
 		{"../testdata/test-cert-chain.pem", 2, fakeAuthority},
 		{"../testdata/test-cert-chain-reverse.pem", 2, fakeAuthority},
 	} {
-		f, err := os.Open(filepath.Clean(file.path))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer f.Close()
-		pemData, err := io.ReadAll(f)
+		pemData, err := os.ReadFile(filepath.Clean(file.path))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1153,7 +1211,7 @@ func TestConcurrentRequests(t *testing.T) {
 			}
 		}(tenant)
 	}
-	for a, b := false, false; !(a && b); {
+	for a, b := false, false; !a || !b; {
 		select {
 		case <-ctx.Done():
 			t.Fatal("timed out waiting for both goroutines to refresh")
@@ -1259,7 +1317,7 @@ func TestRefreshIn(t *testing.T) {
 
 func isTimeSame(t time.Time, expectedSeconds int) bool {
 	v := int(time.Until(t).Seconds())
-	return !(v < expectedSeconds-2 || v > expectedSeconds+2)
+	return v >= expectedSeconds-2 && v <= expectedSeconds+2
 }
 
 func TestNewCredFromTokenProviderError(t *testing.T) {
@@ -2527,6 +2585,64 @@ func TestFMICacheIsolation(t *testing.T) {
 	// FMI token: fake_client_id_test-tenant_{hash}_AppTokenCache
 	if len(cache) != 2 {
 		t.Fatalf("Expected 2 cache entries (1 regular + 1 FMI), got %d", len(cache))
+	}
+}
+
+func TestAttributeCacheIsolation(t *testing.T) {
+	for _, fmiPath := range []string{"", "test/fmi/path"} {
+		t.Run(fmt.Sprintf("fmi=%t", fmiPath != ""), func(t *testing.T) {
+			cache := make(testCache)
+			mockClient := mock.NewClient()
+			cred, err := NewCredFromSecret(fakeSecret)
+			if err != nil {
+				t.Fatal(err)
+			}
+			lmo, tenant := "login.microsoftonline.com", "test-tenant"
+			client, err := New(fmt.Sprintf(authorityFmt, lmo, tenant), fakeClientID, cred,
+				WithCache(&cache), WithHTTPClient(mockClient), WithInstanceDiscovery(false))
+			if err != nil {
+				t.Fatal(err)
+			}
+			mockClient.AppendResponse(mock.WithBody(mock.GetTenantDiscoveryBody(lmo, tenant)))
+			attributes := []string{`{"color":"blue"}`, `{"color":"red"}`}
+			tokens := []string{"attribute-a-token", "attribute-b-token"}
+			requests := 0
+			for i := range attributes {
+				expected := attributes[i]
+				mockClient.AppendResponse(
+					mock.WithBody(mock.GetAccessTokenBody(tokens[i], "", "", "", 3600, 0)),
+					mock.WithCallback(func(r *http.Request) {
+						requests++
+						if err := r.ParseForm(); err != nil {
+							t.Fatal(err)
+						}
+						if r.Method != http.MethodPost || r.Form.Get("attributes") != expected || r.Form.Get("fmi_path") != fmiPath {
+							t.Fatalf("unexpected token request: method=%s attributes=%q fmi_path=%q", r.Method, r.Form.Get("attributes"), r.Form.Get("fmi_path"))
+						}
+					}),
+				)
+			}
+			for i, index := range []int{0, 1, 0, 1} {
+				opts := []AcquireByCredentialOption{WithAttribute(attributes[index])}
+				if fmiPath != "" {
+					opts = append(opts, WithFMIPath(fmiPath))
+				}
+				ar, err := client.AcquireTokenByCredential(context.Background(), tokenScope, opts...)
+				if err != nil {
+					t.Fatal(err)
+				}
+				source := TokenSourceIdentityProvider
+				if i >= 2 {
+					source = TokenSourceCache
+				}
+				if ar.AccessToken != tokens[index] || ar.Metadata.TokenSource != source {
+					t.Fatalf("acquisition %d: got token %q source %d, want %q source %d", i, ar.AccessToken, ar.Metadata.TokenSource, tokens[index], source)
+				}
+			}
+			if requests != 2 {
+				t.Fatalf("expected two token requests, got %d", requests)
+			}
+		})
 	}
 }
 

@@ -240,9 +240,10 @@ func (c *Client) do(ctx context.Context, req *http.Request) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("server response error:\n %w", err)
 	}
-	defer reply.Body.Close()
 
 	data, err := c.readBody(reply)
+	// A close error can't change the result after the response body has been consumed.
+	_ = reply.Body.Close()
 	if err != nil {
 		return nil, fmt.Errorf("could not read the body of an HTTP Response: %w", err)
 	}
