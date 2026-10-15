@@ -1,0 +1,147 @@
+name: sync-upstream
+
+on:
+  schedule:
+    # Daily at 03:17 UTC (off the hour to avoid peak scheduler load).
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+# Never run two syncs at once; a half-finished force push must not be raced.
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  UPSTREAM_URL: https://github.com/AzureAD/microsoft-authentication-library-for-go.git
+  UPSTREAM_BRANCH: main
+
+jobs:
+  sync:
+    name: rebase main onto upstream and mirror new tags
+    # Only the fork runs this; upstream has nothing to sync from itself.
+    if: github.repository != 'AzureAD/microsoft-authentication-library-for-go'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: main
+          fetch-depth: 0
+          # A GITHUB_TOKEN cannot force-push to a protected branch. SYNC_DEPLOY_KEY
+          # is the private half of a write-enabled deploy key that is a bypass
+          # actor on the "no force-push" rule for main. checkout configures origin
+          # to use it over SSH, so every later git push/ls-remote uses it too.
+          ssh-key: ${{ secrets.SYNC_DEPLOY_KEY }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          set -euo pipefail
+          git remote add upstream "$UPSTREAM_URL"
+          git fetch --no-tags upstream "$UPSTREAM_BRANCH"
+          # Upstream tags live under their own namespace so they never collide
+          # with the tags that exist on this fork.
+          git fetch --no-tags --force upstream '+refs/tags/*:refs/upstream-tags/*'
+
+      - name: Rebase main onto upstream
+        id: rebase
+        run: |
+          set -euo pipefail
+          before=$(git rev-parse HEAD)
+          if git merge-base --is-ancestor "upstream/$UPSTREAM_BRANCH" HEAD; then
+            echo "main already contains upstream/$UPSTREAM_BRANCH; nothing to rebase."
+          elif ! git rebase "upstream/$UPSTREAM_BRANCH"; then
+            echo "::error::Rebase onto upstream/$UPSTREAM_BRANCH hit conflicts. Nothing was pushed; resolve manually."
+            git status --short
+            git rebase --abort
+            exit 1
+          fi
+          after=$(git rev-parse HEAD)
+          echo "before=$before" >> "$GITHUB_OUTPUT"
+          echo "after=$after" >> "$GITHUB_OUTPUT"
+          if [ "$before" != "$after" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push main
+        if: steps.rebase.outputs.changed == 'true'
+        env:
+          BEFORE: ${{ steps.rebase.outputs.before }}
+        run: |
+          # The lease is pinned to the commit we rebased, so the push fails if
+          # anyone pushed to main after this job checked it out.
+          git push --force-with-lease="refs/heads/main:$BEFORE" origin HEAD:refs/heads/main
+
+      - name: Mirror new upstream tags with fork changes
+        run: |
+          set -euo pipefail
+          release='^v[0-9]+\.[0-9]+\.[0-9]+$'
+
+          git ls-remote --tags --refs origin | awk '{ sub("^refs/tags/", "", $2); print $2 }' > origin-tags.txt
+          git for-each-ref --format='%(refname:strip=2)' refs/upstream-tags > upstream-tags.txt
+
+          # Only tags newer than the newest release already on the fork are
+          # mirrored. That avoids back-filling history and resurrecting tags
+          # that upstream retracted (e.g. v1.10.0).
+          baseline=$(grep -E "$release" origin-tags.txt | sort -V | tail -n 1 || true)
+          echo "Newest release tag on fork: ${baseline:-<none>}"
+
+          candidates=""
+          for tag in $(grep -E "$release" upstream-tags.txt | grep -vxFf origin-tags.txt | sort -V || true); do
+            # Keep the tag only if it sorts after the baseline.
+            if [ -z "$baseline" ] || [ "$(printf '%s\n%s\n' "$baseline" "$tag" | sort -V | head -n 1)" = "$baseline" ]; then
+              candidates="$candidates $tag"
+            fi
+          done
+          if [ -z "$candidates" ]; then
+            echo "No new upstream tags to mirror."
+            exit 0
+          fi
+
+          # Fork-only commits, oldest first. After the rebase they sit directly
+          # on top of upstream's tip.
+          mapfile -t fork_commits < <(git rev-list --reverse --no-merges "upstream/$UPSTREAM_BRANCH..HEAD")
+          upstream_tip=$(git rev-parse "upstream/$UPSTREAM_BRANCH")
+          main_tip=$(git rev-parse HEAD)
+
+          failed=0
+          for tag in $candidates; do
+            tagged=$(git rev-parse "refs/upstream-tags/$tag^{commit}")
+            if [ "$tagged" = "$upstream_tip" ]; then
+              target=$main_tip
+            else
+              # The release is older than upstream's tip: replay the fork's
+              # commits on top of the tagged commit so the tag contains exactly
+              # that release plus the fork's changes.
+              wt=$(mktemp -d)
+              git worktree add --quiet --detach "$wt" "$tagged"
+              if [ "${#fork_commits[@]}" -gt 0 ] && ! git -C "$wt" cherry-pick "${fork_commits[@]}"; then
+                echo "::error::Cannot apply fork commits on top of $tag. Skipping this tag."
+                git -C "$wt" cherry-pick --abort || true
+                git worktree remove --force "$wt"
+                failed=1
+                continue
+              fi
+              target=$(git -C "$wt" rev-parse HEAD)
+              git worktree remove --force "$wt"
+            fi
+
+            git tag -a "$tag" -m "upstream $tag + fork patches" "$target"
+            # Plain push, never forced: an existing tag on the fork is left alone.
+            if git push origin "refs/tags/$tag"; then
+              echo "Mirrored $tag -> $target"
+            else
+              echo "::error::Could not push tag $tag."
+              failed=1
+            fi
+          done
+          exit "$failed"
