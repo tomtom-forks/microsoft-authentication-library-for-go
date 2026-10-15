@@ -17,8 +17,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/errors"
 	customJSON "github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/json"

@@ -14,8 +14,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	msalerrors "github.com/AzureAD/microsoft-authentication-library-for-go/apps/errors"
 	"github.com/kylelemons/godebug/pretty"

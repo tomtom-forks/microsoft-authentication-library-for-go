@@ -18,8 +18,7 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	msalerrors "github.com/AzureAD/microsoft-authentication-library-for-go/apps/errors"
 )
