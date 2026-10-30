@@ -1143,6 +1143,62 @@ func getNewClientWithMockedResponses(
 	return client, nil
 }
 
+func TestAcquireTokenSilentWithForceRefresh(t *testing.T) {
+	accessToken := "*"
+	newAccessToken := "new-" + accessToken
+	homeTenant := "home-tenant"
+	clientInfo := base64.RawStdEncoding.EncodeToString([]byte(
+		fmt.Sprintf(`{"uid":"uid","utid":"%s"}`, homeTenant),
+	))
+	lmo := "login.microsoftonline.com"
+	idToken := mock.GetIDToken(homeTenant, fmt.Sprintf(authorityFmt, lmo, homeTenant))
+	mockClient := mock.NewClient()
+	mockClient.AppendResponse(mock.WithBody(mock.GetTenantDiscoveryBody(lmo, "common")))
+	mockClient.AppendResponse(mock.WithBody(mock.GetAccessTokenBody(accessToken, idToken, "rt", clientInfo, 3600, 0)))
+	mockClient.AppendResponse(mock.WithBody(mock.GetAccessTokenBody(newAccessToken, idToken, "rt", clientInfo, 3600, 0)), mock.WithCallback(func(req *http.Request) {
+		if err := req.ParseForm(); err != nil {
+			t.Fatal(err)
+		}
+		if got := req.Form.Get("grant_type"); got != "refresh_token" {
+			t.Fatalf("expected refresh token grant, got %q", got)
+		}
+	}))
+
+	client, err := New("common",
+		WithAuthority(fmt.Sprintf(authorityFmt, lmo, "common")),
+		WithHTTPClient(mockClient),
+		WithInstanceDiscovery(false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// the auth flow isn't important, we just need to populate the cache
+	ar, err := client.AcquireTokenByAuthCode(context.Background(), "code", "https://localhost", tokenScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	account := ar.Account
+
+	// mockClient panics on unexpected requests, so cases expecting a cached token also verify no request was sent
+	for _, test := range []struct {
+		desc     string
+		opts     []AcquireSilentOption
+		expected string
+	}{
+		{desc: "default returns cached token", expected: accessToken},
+		{desc: "false returns cached token", opts: []AcquireSilentOption{WithForceRefresh(false)}, expected: accessToken},
+		{desc: "true redeems refresh token", opts: []AcquireSilentOption{WithForceRefresh(true)}, expected: newAccessToken},
+		{desc: "refreshed token is cached", expected: newAccessToken},
+	} {
+		ar, err = client.AcquireTokenSilent(context.Background(), tokenScope, append(test.opts, WithSilentAccount(account))...)
+		if err != nil {
+			t.Fatalf("%s: %v", test.desc, err)
+		}
+		if ar.AccessToken != test.expected {
+			t.Fatalf("%s: expected %q, got %q", test.desc, test.expected, ar.AccessToken)
+		}
+	}
+}
+
 func TestAcquireTokenSilentWithRefreshOnIsExpired(t *testing.T) {
 	accessToken := "*"
 	homeTenant := "home-tenant"

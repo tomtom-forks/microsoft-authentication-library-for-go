@@ -59,6 +59,7 @@ type AcquireTokenSilentParameters struct {
 	AuthnScheme         authority.AuthenticationScheme
 	ExtraBodyParameters map[string]string
 	CacheKeyComponents  map[string]string
+	ForceRefresh        bool
 }
 
 // AcquireTokenAuthCodeParameters contains the parameters required to acquire an access token using the auth code flow.
@@ -86,6 +87,7 @@ type AcquireTokenOnBehalfOfParameters struct {
 	TenantID           string
 	UserAssertion      string
 	CacheKeyComponents map[string]string
+	ForceRefresh       bool
 }
 
 // AcquireTokenByUserFICParameters contains the parameters to acquire a user token via the user_fic flow.
@@ -395,8 +397,8 @@ func (b Client) AcquireTokenSilent(ctx context.Context, silent AcquireTokenSilen
 		return ar, err
 	}
 
-	// ignore cached access tokens when given claims
-	if silent.Claims == "" {
+	// ignore cached access tokens when given claims or when the caller forces a refresh
+	if silent.Claims == "" && !silent.ForceRefresh {
 		ar, err = AuthResultFromStorage(storageTokenResponse)
 		if err == nil {
 			if rt := storageTokenResponse.AccessToken.RefreshOn.T; !rt.IsZero() && Now().After(rt) {
@@ -491,6 +493,7 @@ func (b Client) AcquireTokenOnBehalfOf(ctx context.Context, onBehalfOfParams Acq
 		Claims:             onBehalfOfParams.Claims,
 		ClientClaims:       onBehalfOfParams.ClientClaims,
 		CacheKeyComponents: onBehalfOfParams.CacheKeyComponents,
+		ForceRefresh:       onBehalfOfParams.ForceRefresh,
 	}
 	ar, err := b.AcquireTokenSilent(ctx, silentParameters)
 	if err == nil {
