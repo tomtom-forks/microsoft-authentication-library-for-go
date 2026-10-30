@@ -3351,3 +3351,122 @@ func TestWithClaimsFromClientByUsernamePassword(t *testing.T) {
 		t.Fatalf("expected access token %q, got %q", accessToken, ar.AccessToken)
 	}
 }
+
+func TestWithForceRefresh(t *testing.T) {
+	homeTenant := "home-tenant"
+	clientInfo := base64.RawStdEncoding.EncodeToString([]byte(
+		fmt.Sprintf(`{"uid":"uid","utid":"%s"}`, homeTenant),
+	))
+	lmo := "login.microsoftonline.com"
+	authority := fmt.Sprintf(authorityFmt, lmo, homeTenant)
+	idToken := mock.GetIDToken(homeTenant, authority)
+	cachedToken, refreshedToken := "cached-token", "refreshed-token"
+
+	for _, test := range []struct {
+		desc string
+		// refreshToken and clientInfo are included in token responses; client credential responses have neither
+		refreshToken, clientInfo string
+		// expectedGrant is the grant type of the request sent when WithForceRefresh(true) is set
+		expectedGrant string
+		// acquire returns an acquire func; the first call populates the cache
+		acquire func(ctx context.Context, client Client) (func(forceRefresh ...bool) (AuthResult, error), error)
+	}{
+		{
+			desc:          "AcquireTokenSilent",
+			refreshToken:  "rt",
+			clientInfo:    clientInfo,
+			expectedGrant: "refresh_token",
+			acquire: func(ctx context.Context, client Client) (func(...bool) (AuthResult, error), error) {
+				ar, err := client.AcquireTokenByAuthCode(ctx, "code", "https://localhost", tokenScope)
+				return func(forceRefresh ...bool) (AuthResult, error) {
+					opts := []AcquireSilentOption{WithSilentAccount(ar.Account)}
+					for _, f := range forceRefresh {
+						opts = append(opts, WithForceRefresh(f))
+					}
+					return client.AcquireTokenSilent(ctx, tokenScope, opts...)
+				}, err
+			},
+		},
+		{
+			desc:          "AcquireTokenByCredential",
+			expectedGrant: "client_credentials",
+			acquire: func(ctx context.Context, client Client) (func(...bool) (AuthResult, error), error) {
+				_, err := client.AcquireTokenByCredential(ctx, tokenScope)
+				return func(forceRefresh ...bool) (AuthResult, error) {
+					opts := []AcquireByCredentialOption{}
+					for _, f := range forceRefresh {
+						opts = append(opts, WithForceRefresh(f))
+					}
+					return client.AcquireTokenByCredential(ctx, tokenScope, opts...)
+				}, err
+			},
+		},
+		{
+			desc:         "AcquireTokenOnBehalfOf",
+			refreshToken: "rt",
+			clientInfo:   clientInfo,
+			// the cached OBO refresh token is redeemed, as when claims are given
+			expectedGrant: "refresh_token",
+			acquire: func(ctx context.Context, client Client) (func(...bool) (AuthResult, error), error) {
+				_, err := client.AcquireTokenOnBehalfOf(ctx, "assertion", tokenScope)
+				return func(forceRefresh ...bool) (AuthResult, error) {
+					opts := []AcquireOnBehalfOfOption{}
+					for _, f := range forceRefresh {
+						opts = append(opts, WithForceRefresh(f))
+					}
+					return client.AcquireTokenOnBehalfOf(ctx, "assertion", tokenScope, opts...)
+				}, err
+			},
+		},
+	} {
+		t.Run(test.desc, func(t *testing.T) {
+			cred, err := NewCredFromSecret(fakeSecret)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// mockClient panics on unexpected requests, so cache hits also verify no request was sent
+			mockClient := mock.NewClient()
+			mockClient.AppendResponse(mock.WithBody(mock.GetTenantDiscoveryBody(lmo, homeTenant)))
+			mockClient.AppendResponse(mock.WithBody(mock.GetAccessTokenBody(cachedToken, idToken, test.refreshToken, test.clientInfo, 3600, 0)))
+			mockClient.AppendResponse(
+				mock.WithBody(mock.GetAccessTokenBody(refreshedToken, idToken, test.refreshToken, test.clientInfo, 3600, 0)),
+				mock.WithCallback(func(r *http.Request) {
+					if err := r.ParseForm(); err != nil {
+						t.Fatal(err)
+					}
+					if got := r.Form.Get("grant_type"); got != test.expectedGrant {
+						t.Fatalf("expected grant type %q, got %q", test.expectedGrant, got)
+					}
+				}),
+			)
+			client, err := New(authority, fakeClientID, cred, WithHTTPClient(mockClient), WithInstanceDiscovery(false))
+			if err != nil {
+				t.Fatal(err)
+			}
+			acquire, err := test.acquire(context.Background(), client)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for _, step := range []struct {
+				desc         string
+				forceRefresh []bool
+				token        string
+				source       TokenSource
+			}{
+				{desc: "default", token: cachedToken, source: TokenSourceCache},
+				{desc: "false", forceRefresh: []bool{false}, token: cachedToken, source: TokenSourceCache},
+				{desc: "true", forceRefresh: []bool{true}, token: refreshedToken, source: TokenSourceIdentityProvider},
+				{desc: "refreshed token is cached", token: refreshedToken, source: TokenSourceCache},
+			} {
+				ar, err := acquire(step.forceRefresh...)
+				if err != nil {
+					t.Fatalf("%s: %v", step.desc, err)
+				}
+				if ar.AccessToken != step.token || ar.Metadata.TokenSource != step.source {
+					t.Fatalf("%s: expected token %q from source %d, got %q from %d", step.desc, step.token, step.source, ar.AccessToken, ar.Metadata.TokenSource)
+				}
+			}
+		})
+	}
+}

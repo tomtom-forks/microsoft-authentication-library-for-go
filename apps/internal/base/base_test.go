@@ -198,6 +198,80 @@ func TestAcquireTokenSilentGrantedScopes(t *testing.T) {
 	}
 }
 
+func TestAcquireTokenSilentForceRefresh(t *testing.T) {
+	cachedToken := "cached-" + fakeAccessToken
+	for _, test := range []struct {
+		desc                     string
+		forceRefresh, cacheRT    bool
+		expectedToken            string
+		expectRefresh, expectErr bool
+	}{
+		{desc: "default uses cached access token", cacheRT: true, expectedToken: cachedToken},
+		{desc: "force refresh redeems refresh token", forceRefresh: true, cacheRT: true, expectedToken: fakeAccessToken, expectRefresh: true},
+		{desc: "force refresh without refresh token", forceRefresh: true, expectErr: true},
+	} {
+		t.Run(test.desc, func(t *testing.T) {
+			client := fakeClient(t)
+			refreshed := false
+			client.Token.AccessTokens.(*fake.AccessTokens).FromRefreshTokenCallback = func(_ accesstokens.AppType, _ authority.AuthParams, _ *accesstokens.Credential, rt string) {
+				refreshed = true
+				if rt != fakeRefreshToken {
+					t.Fatalf("unexpected refresh token %q", rt)
+				}
+			}
+			tr := accesstokens.TokenResponse{
+				AccessToken:   cachedToken,
+				ClientInfo:    accesstokens.ClientInfo{UID: "uid", UTID: "utid"},
+				ExpiresOn:     time.Now().Add(time.Hour),
+				GrantedScopes: accesstokens.Scopes{Slice: testScopes},
+				IDToken:       fakeIDToken,
+				TokenType:     "Bearer",
+			}
+			if test.cacheRT {
+				tr.RefreshToken = fakeRefreshToken
+			}
+			account, err := client.manager.Write(
+				authority.AuthParams{
+					AuthorityInfo: authority.Info{
+						AuthorityType: authority.AAD,
+						Host:          fakeAuthority,
+						Tenant:        fakeIDToken.TenantID,
+					},
+					ClientID:    fakeClientID,
+					Scopes:      testScopes,
+					AuthnScheme: &authority.BearerAuthenticationScheme{},
+				},
+				tr,
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ar, err := client.AcquireTokenSilent(context.Background(), AcquireTokenSilentParameters{
+				Account:      account,
+				Scopes:       testScopes,
+				RequestType:  accesstokens.ATPublic,
+				ForceRefresh: test.forceRefresh,
+			})
+			if test.expectErr {
+				if err == nil {
+					t.Fatal("expected an error because there is no refresh token")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ar.AccessToken != test.expectedToken {
+				t.Fatalf("expected access token %q, got %q", test.expectedToken, ar.AccessToken)
+			}
+			if refreshed != test.expectRefresh {
+				t.Fatalf("expected refresh %t, got %t", test.expectRefresh, refreshed)
+			}
+		})
+	}
+}
+
 // failCache helps tests inject cache I/O errors
 type failCache struct {
 	exported              bool

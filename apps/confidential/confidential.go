@@ -665,6 +665,41 @@ func WithTenantID(tenantID string) interface {
 	}
 }
 
+// WithForceRefresh specifies whether to ignore cached access tokens. When true, AcquireTokenSilent doesn't return a
+// cached access token and instead redeems the account's cached refresh token, if one is available, and
+// AcquireTokenByCredential and AcquireTokenOnBehalfOf request a new token from the identity provider. New tokens
+// are written to the cache as usual. This is useful, for example, to apply conditional access policies immediately
+// rather than after the cached access token expires. The default is false.
+func WithForceRefresh(forceRefresh bool) interface {
+	AcquireSilentOption
+	AcquireByCredentialOption
+	AcquireOnBehalfOfOption
+	options.CallOption
+} {
+	return struct {
+		AcquireSilentOption
+		AcquireByCredentialOption
+		AcquireOnBehalfOfOption
+		options.CallOption
+	}{
+		CallOption: options.NewCallOption(
+			func(a any) error {
+				switch t := a.(type) {
+				case *acquireTokenSilentOptions:
+					t.forceRefresh = forceRefresh
+				case *acquireTokenByCredentialOptions:
+					t.forceRefresh = forceRefresh
+				case *acquireTokenOnBehalfOfOptions:
+					t.forceRefresh = forceRefresh
+				default:
+					return fmt.Errorf("unexpected options type %T", a)
+				}
+				return nil
+			},
+		),
+	}
+}
+
 // acquireTokenSilentOptions are all the optional settings to an AcquireTokenSilent() call.
 // These are set by using various AcquireTokenSilentOption functions.
 type acquireTokenSilentOptions struct {
@@ -673,6 +708,7 @@ type acquireTokenSilentOptions struct {
 	clientClaims       string
 	authnScheme        AuthenticationScheme
 	cacheKeyComponents map[string]string
+	forceRefresh       bool
 }
 
 // AcquireSilentOption is implemented by options for AcquireTokenSilent
@@ -705,7 +741,7 @@ func WithSilentAccount(account Account) interface {
 
 // AcquireTokenSilent acquires a token from either the cache or using a refresh token.
 //
-// Options: [WithClaims], [WithClaimsFromClient], [WithSilentAccount], [WithTenantID]
+// Options: [WithClaims], [WithClaimsFromClient], [WithForceRefresh], [WithSilentAccount], [WithTenantID]
 func (cca Client) AcquireTokenSilent(ctx context.Context, scopes []string, opts ...AcquireSilentOption) (AuthResult, error) {
 	o := acquireTokenSilentOptions{}
 	if err := options.ApplyOptions(&o, opts); err != nil {
@@ -732,6 +768,7 @@ func (cca Client) AcquireTokenSilent(ctx context.Context, scopes []string, opts 
 		Claims:             o.claims,
 		ClientClaims:       o.clientClaims,
 		CacheKeyComponents: o.cacheKeyComponents,
+		ForceRefresh:       o.forceRefresh,
 	}
 
 	return cca.acquireTokenSilentInternal(ctx, silentParameters)
@@ -857,6 +894,7 @@ type acquireTokenByCredentialOptions struct {
 	authnScheme         AuthenticationScheme
 	extraBodyParameters map[string]string
 	cacheKeyComponents  map[string]string
+	forceRefresh        bool
 }
 
 // AcquireByCredentialOption is implemented by options for AcquireTokenByCredential
@@ -866,7 +904,7 @@ type AcquireByCredentialOption interface {
 
 // AcquireTokenByCredential acquires a security token from the authority, using the client credentials grant.
 //
-// Options: [WithClaims], [WithClaimsFromClient], [WithTenantID], [WithFMIPath], [WithAttribute]
+// Options: [WithClaims], [WithClaimsFromClient], [WithForceRefresh], [WithTenantID], [WithFMIPath], [WithAttribute]
 func (cca Client) AcquireTokenByCredential(ctx context.Context, scopes []string, opts ...AcquireByCredentialOption) (AuthResult, error) {
 	o := acquireTokenByCredentialOptions{}
 	err := options.ApplyOptions(&o, opts)
@@ -886,7 +924,7 @@ func (cca Client) AcquireTokenByCredential(ctx context.Context, scopes []string,
 	}
 	authParams.ExtraBodyParameters = o.extraBodyParameters
 	authParams.CacheKeyComponents = o.cacheKeyComponents
-	if o.claims == "" {
+	if o.claims == "" && !o.forceRefresh {
 		silentParameters := base.AcquireTokenSilentParameters{
 			Scopes:              scopes,
 			Account:             Account{}, // empty account for app token
@@ -920,6 +958,7 @@ type acquireTokenOnBehalfOfOptions struct {
 	claims, tenantID   string
 	clientClaims       string
 	cacheKeyComponents map[string]string
+	forceRefresh       bool
 }
 
 // AcquireOnBehalfOfOption is implemented by options for AcquireTokenOnBehalfOf
@@ -930,7 +969,7 @@ type AcquireOnBehalfOfOption interface {
 // AcquireTokenOnBehalfOf acquires a security token for an app using middle tier apps access token.
 // Refer https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow.
 //
-// Options: [WithClaims], [WithClaimsFromClient], [WithTenantID]
+// Options: [WithClaims], [WithClaimsFromClient], [WithForceRefresh], [WithTenantID]
 func (cca Client) AcquireTokenOnBehalfOf(ctx context.Context, userAssertion string, scopes []string, opts ...AcquireOnBehalfOfOption) (AuthResult, error) {
 	o := acquireTokenOnBehalfOfOptions{}
 	if err := options.ApplyOptions(&o, opts); err != nil {
@@ -944,6 +983,7 @@ func (cca Client) AcquireTokenOnBehalfOf(ctx context.Context, userAssertion stri
 		Credential:         cca.cred,
 		TenantID:           o.tenantID,
 		CacheKeyComponents: o.cacheKeyComponents,
+		ForceRefresh:       o.forceRefresh,
 	}
 	return cca.base.AcquireTokenOnBehalfOf(ctx, params)
 }
